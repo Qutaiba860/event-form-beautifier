@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Calendar, Clock, MapPin, Users, DollarSign, Plus, Trash2, Building2 } from "lucide-react";
 
@@ -147,7 +146,7 @@ export default function EventRequestForm() {
                   required 
                   placeholder="Describe your event in detail..." 
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground resize-none"
-                  rows="4"
+                  rows={4}
                 />
               </div>
 
@@ -157,10 +156,11 @@ export default function EventRequestForm() {
                   required 
                   placeholder="What are the objectives and expected outcomes?" 
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground resize-none"
-                  rows="3"
+                  rows={3}
                 />
               </div>
 
+              
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground flex items-center gap-2">
@@ -242,6 +242,8 @@ export default function EventRequestForm() {
               </div>
             </div>
           </div>
+
+          
 
           {/* Event Classification Section */}
           <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
@@ -353,79 +355,83 @@ export default function EventRequestForm() {
               </div>
 
               {needsBudget && (
-                <div className="space-y-6 pt-6 border-t border-border/50">
+                <div className="space-y-6 border-t pt-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-foreground">Budget Items</h3>
                     <button
                       type="button"
                       onClick={handleAddItem}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200 shadow-lg hover:shadow-xl"
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200 shadow-lg"
                     >
                       <Plus className="w-4 h-4" />
                       Add Item
                     </button>
                   </div>
 
-                  <div className="space-y-4">
-                    {items.map((item, index) => (
-                      <div key={index} className="relative p-6 border border-border rounded-2xl bg-gradient-to-r from-gray-50/50 to-white/50 backdrop-blur-sm">
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Item Name *</label>
-                            <input
-                              required
-                              placeholder={`Item ${index + 1} name`}
-                              className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
-                              value={item.name}
-                              onChange={(e) => handleItemChange(index, "name", e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Quantity *</label>
-                            <input
-                              required
-                              type="number"
-                              placeholder="Quantity"
-                              className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
-                              value={item.quantity}
-                              onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Unit Price *</label>
-                            <input
-                              required
-                              type="number"
-                              placeholder="Price per unit"
-                              className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
-                              value={item.price}
-                              onChange={(e) => handleItemChange(index, "price", e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Total Price *</label>
-                            <input
-                              required
-                              type="number"
-                              placeholder="Total price"
-                              className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
-                              value={item.totalPrice}
-                              onChange={(e) => handleItemChange(index, "totalPrice", e.target.value)}
-                            />
-                          </div>
+                  {items.map((item, index) => (
+                    <div
+                      key={index}
+                      className="relative p-6 border border-border rounded-2xl bg-background/30 backdrop-blur-sm space-y-4"
+                    >
+                      {items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Item Name *</label>
+                          <input
+                            required
+                            placeholder={`Item ${index + 1} name`}
+                            className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
+                            value={item.name}
+                            onChange={(e) => handleItemChange(index, "name", e.target.value)}
+                          />
                         </div>
-                        {items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(index)}
-                            className="absolute top-4 right-4 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-200 shadow-lg hover:shadow-xl"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Quantity *</label>
+                          <input
+                            required
+                            type="number"
+                            placeholder="Qty"
+                            className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Unit Price (AED) *</label>
+                          <input
+                            required
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
+                            value={item.price}
+                            onChange={(e) => handleItemChange(index, "price", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Total Price (AED) *</label>
+                          <input
+                            required
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
+                            value={item.totalPrice}
+                            onChange={(e) => handleItemChange(index, "totalPrice", e.target.value)}
+                          />
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -435,9 +441,8 @@ export default function EventRequestForm() {
           <div className="text-center">
             <button
               type="submit"
-              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white text-lg font-semibold rounded-2xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1"
+              className="px-12 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white text-lg font-semibold rounded-2xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
             >
-              <Calendar className="w-5 h-5" />
               Submit Event Request
             </button>
           </div>
