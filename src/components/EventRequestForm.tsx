@@ -1,16 +1,82 @@
 import React, { useState } from "react";
 import { Calendar, Clock, MapPin, Users, DollarSign, Plus, Trash2, Building2 } from "lucide-react";
+import { apiService } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export default function EventRequestForm() {
   const [needsBudget, setNeedsBudget] = useState(false);
   const [items, setItems] = useState([
     { name: "", quantity: "", price: "", totalPrice: "" },
   ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Form submitted!");
-    console.log("Budget Items:", items);
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      // Create event
+      const eventData = {
+        name: formData.get('eventName') as string,
+        description: formData.get('description') as string,
+        goals: formData.get('goals') as string,
+        host: formData.get('host') as string,
+        venue: formData.get('venue') as string,
+        location: formData.get('location') as string,
+        start_date: formData.get('startDate') as string,
+        end_date: formData.get('endDate') as string,
+        start_time: formData.get('startTime') as string,
+        end_time: formData.get('endTime') as string,
+        expected_attendees: parseInt(formData.get('expectedAttendees') as string),
+        department: formData.get('department') as string,
+        category: formData.get('category') as string,
+        status: 'Pending'
+      };
+
+      const createdEvent = await apiService.createEvent(eventData);
+
+      // Create budget items if needed
+      if (needsBudget) {
+        for (const item of items) {
+          if (item.name && item.quantity && item.price && item.totalPrice) {
+            await apiService.createBudget({
+              item_name: item.name,
+              item_quantity: parseInt(item.quantity),
+              item_cost: item.price,
+              total_cost: item.totalPrice,
+              budget_status: 'Pending',
+              event: createdEvent.id
+            });
+          }
+        }
+      }
+
+      toast({
+        title: "Success!",
+        description: "Your event request has been submitted for approval.",
+      });
+
+      // Reset form
+      (e.target as HTMLFormElement).reset();
+      setItems([{ name: "", quantity: "", price: "", totalPrice: "" }]);
+      setNeedsBudget(false);
+      
+      // Navigate to dashboard after submission
+      navigate('/host-dashboard');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit event request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAddItem = () => {
@@ -20,13 +86,13 @@ export default function EventRequestForm() {
     ]);
   };
 
-  const handleItemChange = (index, field, value) => {
+  const handleItemChange = (index: number, field: string, value: string) => {
     const updatedItems = [...items];
     updatedItems[index][field] = value;
     setItems(updatedItems);
   };
 
-  const handleRemoveItem = (index) => {
+  const handleRemoveItem = (index: number) => {
     const updatedItems = items.filter((_, i) => i !== index);
     setItems(updatedItems);
   };
@@ -61,6 +127,7 @@ export default function EventRequestForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Full Name *</label>
                 <input 
+                  name="fullName"
                   required 
                   placeholder="Enter your full name" 
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
@@ -69,6 +136,7 @@ export default function EventRequestForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">AURAK Email *</label>
                 <input 
+                  name="email"
                   required 
                   type="email" 
                   placeholder="your.email@aurak.ac.ae" 
@@ -78,6 +146,7 @@ export default function EventRequestForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Phone Number *</label>
                 <input 
+                  name="phone"
                   required 
                   type="tel" 
                   placeholder="+971 XX XXX XXXX" 
@@ -87,6 +156,7 @@ export default function EventRequestForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Department *</label>
                 <select 
+                  name="department"
                   required 
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
                 >
@@ -125,6 +195,7 @@ export default function EventRequestForm() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Event Name *</label>
                   <input 
+                    name="eventName"
                     required 
                     placeholder="Enter event name" 
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
@@ -133,6 +204,7 @@ export default function EventRequestForm() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Host *</label>
                   <input 
+                    name="host"
                     required 
                     placeholder="Event host/organizer" 
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
@@ -143,6 +215,7 @@ export default function EventRequestForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Event Description *</label>
                 <textarea 
+                  name="description"
                   required 
                   placeholder="Describe your event in detail..." 
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground resize-none"
@@ -153,6 +226,7 @@ export default function EventRequestForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Event Goal *</label>
                 <textarea 
+                  name="goals"
                   required 
                   placeholder="What are the objectives and expected outcomes?" 
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground resize-none"
@@ -168,6 +242,7 @@ export default function EventRequestForm() {
                     Event Venue *
                   </label>
                   <input 
+                    name="venue"
                     required 
                     placeholder="Venue name" 
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
@@ -179,6 +254,7 @@ export default function EventRequestForm() {
                     Event Location *
                   </label>
                   <input 
+                    name="location"
                     required 
                     placeholder="Specific location/address" 
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground"
@@ -191,6 +267,7 @@ export default function EventRequestForm() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">Start Date *</label>
                     <input 
+                      name="startDate"
                       required 
                       type="date" 
                       className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
@@ -199,6 +276,7 @@ export default function EventRequestForm() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">End Date *</label>
                     <input 
+                      name="endDate"
                       required 
                       type="date" 
                       className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
@@ -212,6 +290,7 @@ export default function EventRequestForm() {
                       Start Time *
                     </label>
                     <input 
+                      name="startTime"
                       required 
                       type="time" 
                       className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
@@ -223,6 +302,7 @@ export default function EventRequestForm() {
                       End Time *
                     </label>
                     <input 
+                      name="endTime"
                       required 
                       type="time" 
                       className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
@@ -234,6 +314,7 @@ export default function EventRequestForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Expected Number of Attendees *</label>
                 <input 
+                  name="expectedAttendees"
                   required 
                   placeholder="Estimated attendance" 
                   type="number" 
@@ -242,8 +323,6 @@ export default function EventRequestForm() {
               </div>
             </div>
           </div>
-
-          
 
           {/* Event Classification Section */}
           <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
@@ -274,7 +353,7 @@ export default function EventRequestForm() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {["Sport", "Academic", "Cultural", "Club", "Other"].map((cat) => (
                     <label key={cat} className="flex items-center gap-3 p-3 border border-border rounded-xl bg-background/30 hover:bg-background/50 transition-all duration-200 cursor-pointer">
-                      <input type="checkbox" className="text-primary" />
+                      <input type="radio" name="category" value={cat} required className="text-primary" />
                       <span className="text-foreground">{cat}</span>
                     </label>
                   ))}
@@ -441,9 +520,10 @@ export default function EventRequestForm() {
           <div className="text-center">
             <button
               type="submit"
-              className="px-12 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white text-lg font-semibold rounded-2xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105"
+              disabled={isSubmitting}
+              className="px-12 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white text-lg font-semibold rounded-2xl hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              Submit Event Request
+              {isSubmitting ? "Submitting..." : "Submit Event Request"}
             </button>
           </div>
         </form>
