@@ -1,0 +1,61 @@
+\documentclass{article}
+\usepackage{hyperref}
+\title{EMP API Documentation}
+\author{Internship Group 6}
+\date{\today}
+\begin{document}
+
+\maketitle
+
+\section*{Base URL}
+\texttt{http://127.0.0.1:8000/api/}
+
+\section*{Available Endpoints}
+
+\subsection*{/users/}
+\begin{itemize}
+  \item \textbf{GET} - List all users
+  \item \textbf{POST} - Create a new user
+  \item \textbf{GET /users/\{id\}/} - Retrieve a single user
+  \item \textbf{PUT /users/\{id\}/} - Update a user
+  \item \textbf{DELETE /users/\{id\}/} - Delete a user
+\end{itemize}
+
+\subsection*{/events/}
+\begin{itemize}
+  \item \textbf{GET} - List all events
+  \item \textbf{POST} - Create a new event
+  \item \textbf{GET /events/\{id\}/} - Retrieve a single event
+  \item \textbf{PUT /events/\{id\}/} - Update an event
+  \item \textbf{DELETE /events/\{id\}/} - Delete an event
+\end{itemize}
+
+\subsection*{/budgets/}
+\begin{itemize}
+  \item \textbf{GET} - List all budgets
+  \item \textbf{POST} - Create a new budget
+  \item \textbf{GET /budgets/\{id\}/} - Retrieve a single budget
+  \item \textbf{PUT /budgets/\{id\}/} - Update a budget
+  \item \textbf{DELETE /budgets/\{id\}/} - Delete a budget
+\end{itemize}
+
+\subsection*{/media/}
+\begin{itemize}
+  \item \textbf{GET} - List all media
+  \item \textbf{POST} - Upload new media metadata
+  \item \textbf{GET /media/\{id\}/} - Retrieve a single media entry
+  \item \textbf{PUT /media/\{id\}/} - Update media info
+  \item \textbf{DELETE /media/\{id\}/} - Delete a media record
+\end{itemize}
+
+\section*{Authentication}
+Authentication is currently disabled for testing. Future updates will include:
+\begin{itemize}
+  \item Single Sign-On (SSO) via AURAK email
+  \item Token-based authentication or session-based login
+\end{itemize}
+
+\section*{Response Format}
+All endpoints return data in \textbf{JSON} format.
+
+\end{document}
