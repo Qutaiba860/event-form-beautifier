@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import VerifyOTP from "./pages/VerifyOTP";
+import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import HostDashboard from "./pages/HostDashboard";
 import NotFound from "./pages/NotFound";
@@ -34,12 +35,8 @@ const AppRoutes = () => {
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-otp" element={<VerifyOTP />} />
+      <Route path="/dashboard" element={<UserDashboard />} />
       <Route path="/events" element={<Index />} />
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <AdminDashboard />
-        </ProtectedRoute>
-      } />
       <Route path="/admin-dashboard" element={
         <ProtectedRoute>
           <AdminDashboard />
