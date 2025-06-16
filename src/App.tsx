@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import VerifyOTP from "./pages/VerifyOTP";
 import AdminDashboard from "./pages/AdminDashboard";
 import HostDashboard from "./pages/HostDashboard";
 import NotFound from "./pages/NotFound";
@@ -31,6 +32,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route path="/" element={<Index />} />
       <Route path="/dashboard" element={
         <ProtectedRoute>
