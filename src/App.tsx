@@ -31,9 +31,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => {
   return (
     <Routes>
+      <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-otp" element={<VerifyOTP />} />
-      <Route path="/" element={<Index />} />
+      <Route path="/events" element={<Index />} />
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <AdminDashboard />
