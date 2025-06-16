@@ -36,7 +36,7 @@ const VerifyOTP = () => {
           title: "Welcome to AURAK!",
           description: "You have been successfully logged in.",
         });
-        navigate('/dashboard');
+        navigate('/events');
       } else {
         toast({
           title: "Invalid OTP",
