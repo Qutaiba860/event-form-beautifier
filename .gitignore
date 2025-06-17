@@ -1,0 +1,47 @@
+# Python artifacts
+pycache/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environments (customize if yours is named differently)
+venv/
+env/
+EMP/Lib/
+EMP/Scripts/
+EMP/pyvenv.cfg
+
+# Django specific
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+staticfiles/
+*.mo
+
+# PostgreSQL related (ignore local database dumps)
+*.psql
+*.dump
+*.sql
+
+# Environment variable files (very important for secrets)
+.env
+.env.*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE/editor folders
+.vscode/
+.idea/
+*.swp
+
+# OS-specific
+ehthumbs.db
+Icon?
+Desktop.ini
+KEYS
+Documentation/API Documentation/API_Specification.synctex.gz
