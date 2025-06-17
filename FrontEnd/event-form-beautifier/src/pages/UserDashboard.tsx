@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -73,6 +72,10 @@ const UserDashboard = () => {
 
   const handleCreateEvent = () => {
     navigate('/events');
+  };
+
+  const handleViewEvent = (eventId: number) => {
+    navigate(`/events/${eventId}`);
   };
 
   const handleApproveEvent = (eventId: number, eventName: string) => {
@@ -191,7 +194,12 @@ const UserDashboard = () => {
                   <TableBody>
                     {filteredEvents.map((event) => (
                       <TableRow key={event.id} className="hover:bg-red-50">
-                        <TableCell className="font-medium">{event.name}</TableCell>
+                        <TableCell 
+                          className="font-medium cursor-pointer text-red-600 hover:text-red-800"
+                          onClick={() => handleViewEvent(event.id)}
+                        >
+                          {event.name}
+                        </TableCell>
                         <TableCell>{event.host}</TableCell>
                         <TableCell>{event.category}</TableCell>
                         <TableCell>{event.date}</TableCell>
@@ -279,7 +287,12 @@ const UserDashboard = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-4 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-800">{event.name}</h4>
+                            <h4 
+                              className="text-lg font-semibold text-red-600 cursor-pointer hover:text-red-800"
+                              onClick={() => handleViewEvent(event.id)}
+                            >
+                              {event.name}
+                            </h4>
                             {getStatusBadge(event.status)}
                           </div>
                           <div className="flex items-center gap-6 text-gray-600">
