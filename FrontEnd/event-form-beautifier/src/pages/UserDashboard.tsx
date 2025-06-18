@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Plus, Filter, Check, X, Users, Clock } from 'lucide-react';
+import { Calendar, Plus, Filter, Check, X, Users, Clock, Eye } from 'lucide-react';
 
 // Mock data for demonstration
 const mockUserEvents = [
@@ -73,6 +72,10 @@ const UserDashboard = () => {
 
   const handleCreateEvent = () => {
     navigate('/events');
+  };
+
+  const handleViewEvent = (eventId: number) => {
+    navigate(`/event-details/${eventId}`);
   };
 
   const handleApproveEvent = (eventId: number, eventName: string) => {
@@ -191,7 +194,14 @@ const UserDashboard = () => {
                   <TableBody>
                     {filteredEvents.map((event) => (
                       <TableRow key={event.id} className="hover:bg-red-50">
-                        <TableCell className="font-medium">{event.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <button
+                            onClick={() => handleViewEvent(event.id)}
+                            className="text-red-600 hover:text-red-800 hover:underline font-medium"
+                          >
+                            {event.name}
+                          </button>
+                        </TableCell>
                         <TableCell>{event.host}</TableCell>
                         <TableCell>{event.category}</TableCell>
                         <TableCell>{event.date}</TableCell>
@@ -200,6 +210,14 @@ const UserDashboard = () => {
                         <TableCell>{getStatusBadge(event.status)}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewEvent(event.id)}
+                              className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
                             <Button
                               size="sm"
                               onClick={() => handleApproveEvent(event.id, event.name)}
@@ -279,7 +297,12 @@ const UserDashboard = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-4 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-800">{event.name}</h4>
+                            <button
+                              onClick={() => handleViewEvent(event.id)}
+                              className="text-lg font-semibold text-red-600 hover:text-red-800 hover:underline"
+                            >
+                              {event.name}
+                            </button>
                             {getStatusBadge(event.status)}
                           </div>
                           <div className="flex items-center gap-6 text-gray-600">
@@ -296,6 +319,14 @@ const UserDashboard = () => {
                             </div>
                           </div>
                         </div>
+                        <Button
+                          onClick={() => handleViewEvent(event.id)}
+                          variant="outline"
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

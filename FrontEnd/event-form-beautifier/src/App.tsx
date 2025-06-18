@@ -11,6 +11,7 @@ import VerifyOTP from "./pages/VerifyOTP";
 import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import HostDashboard from "./pages/HostDashboard";
+import EventDetails from "./pages/EventDetails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const AppRoutes = () => {
       <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route path="/dashboard" element={<UserDashboard />} />
       <Route path="/events" element={<Index />} />
+      <Route path="/event-details/:id" element={<EventDetails />} />
       <Route path="/admin-dashboard" element={
         <ProtectedRoute>
           <AdminDashboard />
