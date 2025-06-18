@@ -32,7 +32,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route path="/dashboard" element={<UserDashboard />} />
