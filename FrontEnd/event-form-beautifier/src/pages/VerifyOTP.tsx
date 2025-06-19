@@ -1,28 +1,27 @@
 
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { KeyRound } from 'lucide-react';
+import { Shield, ArrowLeft } from 'lucide-react';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 const VerifyOTP = () => {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const { login } = useAuth();
   
   const email = location.state?.email || '';
 
-  const handleVerifyOTP = async () => {
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (otp.length !== 6) {
       toast({
         title: "Invalid OTP",
-        description: "Please enter a 6-digit verification code.",
+        description: "Please enter a 6-digit code.",
         variant: "destructive",
       });
       return;
@@ -30,33 +29,29 @@ const VerifyOTP = () => {
 
     setIsLoading(true);
 
-    try {
-      // For demo purposes, accept any 6-digit OTP for valid emails
-      if (email === 'user@aurak.ac.ae' || email === 'admin@aurak.ac.ae') {
-        await login(email, 'dummy_password');
+    // Simulate OTP verification
+    setTimeout(() => {
+      if (otp === '123456') {
         toast({
-          title: "Login Successful!",
-          description: "Welcome to AURAK Event Management Platform.",
+          title: "Welcome to AURAK!",
+          description: "You have been successfully logged in.",
         });
-        navigate('/user-page');
+        navigate('/dashboard');
       } else {
-        throw new Error('Invalid email');
+        toast({
+          title: "Invalid OTP",
+          description: "Please check your code and try again.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      toast({
-        title: "Login Failed",
-        description: "Please try again with a valid AURAK email.",
-        variant: "destructive",
-      });
-    } finally {
       setIsLoading(false);
-    }
+    }, 1500);
   };
 
   const handleResendOTP = () => {
     toast({
       title: "OTP Resent!",
-      description: "A new verification code has been sent to your email.",
+      description: "Please check your email for the new verification code.",
     });
   };
 
@@ -65,15 +60,22 @@ const VerifyOTP = () => {
       <Card className="w-full max-w-md shadow-xl border-red-200">
         <CardHeader className="text-center bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full mb-4 mx-auto shadow-lg">
-            <KeyRound className="w-10 h-10 text-red-600" />
+            <Shield className="w-10 h-10 text-red-600" />
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Enter Verification Code</CardTitle>
+          <CardTitle className="text-2xl font-bold text-white">Verify Your Email</CardTitle>
           <CardDescription className="text-red-100">
-            We've sent a 6-digit code to {email}
+            AURAK Event Management Platform
           </CardDescription>
         </CardHeader>
         <CardContent className="p-8">
-          <div className="space-y-6">
+          <div className="mb-6 text-center">
+            <p className="text-gray-600">
+              We've sent a 6-digit verification code to
+            </p>
+            <p className="text-red-600 font-medium mt-1">{email}</p>
+          </div>
+
+          <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div className="flex justify-center">
               <InputOTP
                 maxLength={6}
@@ -90,30 +92,41 @@ const VerifyOTP = () => {
                 </InputOTPGroup>
               </InputOTP>
             </div>
-            
+
             <Button 
-              onClick={handleVerifyOTP}
+              type="submit" 
               className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 transition-colors duration-200"
               disabled={isLoading || otp.length !== 6}
             >
-              {isLoading ? "Verifying..." : "Verify & Login"}
+              {isLoading ? "Verifying..." : "Verify Code"}
             </Button>
-            
+          </form>
+
+          <div className="mt-6 space-y-4">
             <div className="text-center">
               <button
                 onClick={handleResendOTP}
-                className="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-200"
+                className="text-red-600 hover:text-red-700 text-sm font-medium underline"
               >
                 Didn't receive the code? Resend OTP
               </button>
             </div>
+            
+            <div className="text-center">
+              <button
+                onClick={() => navigate('/login')}
+                className="inline-flex items-center text-gray-600 hover:text-gray-700 text-sm"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to login
+              </button>
+            </div>
           </div>
-          
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-2 font-medium">Demo Accounts:</p>
-            <p className="text-xs text-gray-500">• user@aurak.ac.ae (Normal User)</p>
-            <p className="text-xs text-gray-500">• admin@aurak.ac.ae (Admin)</p>
-            <p className="text-xs text-gray-500 mt-2">Use any 6-digit code to login</p>
+
+          <div className="mt-6 p-4 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-xs text-red-700 text-center">
+              For demo purposes, use code: <span className="font-mono font-bold">123456</span>
+            </p>
           </div>
         </CardContent>
       </Card>

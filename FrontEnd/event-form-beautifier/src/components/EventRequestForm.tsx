@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { apiService } from '@/services/api';
 import {
   Calendar,
   Clock,
@@ -37,6 +38,7 @@ export default function EventRequestForm() {
   const [expectedFaculty, setExpectedFaculty] = useState("");
   const [expectedCommunity, setExpectedCommunity] = useState("");
   const [expectedOthers, setExpectedOthers] = useState("");
+  const [totalExpected, setTotalExpected] = useState(0);
 
   // Classification
   const [category, setCategory] = useState("");
@@ -49,107 +51,81 @@ export default function EventRequestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+    useEffect(() => {
+    const sum =
+      Number(expectedStudents) +
+      Number(expectedFaculty) +
+      Number(expectedCommunity) +
+      Number(expectedOthers);
+    setTotalExpected(sum);
+  }, [expectedStudents, expectedFaculty, expectedCommunity, expectedOthers]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setIsSubmitting(true); // Disable button
     setSuccessMessage(""); // Clear old message
 
-    const payload = {
-      status: "Pending",
-      name: eventName,
-      start_date: startDate,
-      end_date: endDate,
-      start_time: startTime + ":00",
-      end_time: endTime + ":00",
-      description: description,
-      host: host,
-      venue: venue,
-      location: location,
-      category: category,
-      department: department,
-      goals: goals,
-      expected_students: parseInt(expectedStudents),
-      expected_faculty: parseInt(expectedFaculty),
-      expected_community: parseInt(expectedCommunity),
-      expected_others: parseInt(expectedOthers),
-      full_name: fullName,
-      email: email,
-      phone: phone,
-      target_audience: targetAudience,
-    };
+
+
+      const payload = {
+    status: "Pending",
+    name: eventName,
+    start_date: startDate,
+    end_date: endDate,
+    start_time: startTime + ":00",
+    end_time: endTime + ":00",
+    description,
+    host,
+    venue,
+    location,
+    category,
+    department,
+    goals,
+    expected_students: parseInt(expectedStudents),
+    expected_faculty: parseInt(expectedFaculty),
+    expected_community: parseInt(expectedCommunity),
+    expected_others: parseInt(expectedOthers),
+    full_name: fullName,
+    email,
+    phone,
+    target_audience: targetAudience,
+  };
 
     console.log("Submitting Event payload:", payload);
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/events/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+ try {
+    const eventData = await apiService.createEvent(payload);
+    const eventId = eventData.id;
+    console.log("✅ Event created:", eventData);
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error("Error submitting Event:", errorData);
-        alert("Error submitting Event.");
-        setIsSubmitting(false);
-        return;
-      }
+    for (const item of items) {
+      if (
+        item.name.trim() === "" &&
+        item.quantity === "" &&
+        item.price === "" &&
+        item.totalPrice === ""
+      ) continue;
 
-      const eventData = await response.json();
-      const eventId = eventData.id;
-      console.log("Event created with ID:", eventId);
+      const budgetPayload = {
+        item_name: item.name,
+        item_quantity: parseInt(item.quantity),
+        item_cost: parseFloat(item.price),
+        total_cost: parseFloat(item.totalPrice),
+        budget_status: "Pending",
+        event: eventId,
+      };
 
-      // Submit Budget items
-      for (const item of items) {
-        if (
-          item.name.trim() === "" &&
-          item.quantity === "" &&
-          item.price === "" &&
-          item.totalPrice === ""
-        ) {
-          console.log("Skipping empty budget item");
-          continue;
-        }
-
-        const budgetPayload = {
-          item_name: item.name,
-          item_quantity: parseInt(item.quantity),
-          item_cost: parseFloat(item.price),
-          total_cost: parseFloat(item.totalPrice),
-          budget_status: "Pending",
-          event: eventId,
-        };
-
-        console.log("Submitting Budget item:", budgetPayload);
-
-        const budgetResponse = await fetch(`${API_BASE_URL}/api/budgets/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(budgetPayload),
-        });
-
-        if (!budgetResponse.ok) {
-          const budgetErrorData = await budgetResponse.json();
-          console.error("Error submitting Budget item:", budgetErrorData);
-          alert("Error submitting one or more Budget items. Check console.");
-        }
-      }
-
-      // Success
-      setSuccessMessage("Event and Budget items submitted successfully!");
-      console.log("Event and Budget items submitted successfully!");
-    } catch (error) {
-      console.error("Network error submitting Event and Budget:", error);
-      alert("Network error. Check console.");
-    } finally {
-      setIsSubmitting(false); // Re-enable button
+      await apiService.createBudget(budgetPayload);
     }
-  };
+
+    setSuccessMessage("Event and Budget items submitted successfully!");
+  } catch (error) {
+    console.error("❌ Submission error:", error);
+    alert("Submission failed. Check console.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleAddItem = () => {
     setItems([...items, { name: "", quantity: "", price: "", totalPrice: "" }]);
@@ -418,52 +394,69 @@ export default function EventRequestForm() {
                   </div>
                 </div>
               </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Expected Number of Student Attendees
+                  </label>
+                  <input
+                    type="number"
+                    value={expectedStudents}
+                    onChange={(e) => setExpectedStudents(e.target.value)}
+                    placeholder="e.g., 100"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Expected Number of Faculty Attendees
+                  </label>
+                  <input
+                    type="number"
+                    value={expectedFaculty}
+                    onChange={(e) => setExpectedFaculty(e.target.value)}
+                    placeholder="e.g., 10"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Expected Number of Community Attendees
+                  </label>
+                  <input
+                    type="number"
+                    value={expectedCommunity}
+                    onChange={(e) => setExpectedCommunity(e.target.value)}
+                    placeholder="e.g., 15"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Expected Number of Other Attendees
+                  </label>
+                  <input
+                    type="number"
+                    value={expectedOthers}
+                    onChange={(e) => setExpectedOthers(e.target.value)}
+                    placeholder="e.g., 5"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                  />
+                </div>
+              </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Expected Number of Student Attendees</label>
+              {/* Total Field */}
+              <div className="mt-6 space-y-2">
+                <label className="text-sm font-medium text-foreground">Total Expected Attendees</label>
                 <input
                   type="number"
-                  value={expectedStudents}
-                  onChange={(e) => setExpectedStudents(e.target.value)}
-                  placeholder="e.g., 100"
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                  value={totalExpected}
+                  readOnly
+                  className="w-full px-4 py-3 rounded-xl border border-muted bg-muted/50 backdrop-blur-sm text-muted-foreground cursor-not-allowed"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Expected Number of Faculty Attendees</label>
-                <input
-                  type="number"
-                  value={expectedFaculty}
-                  onChange={(e) => setExpectedFaculty(e.target.value)}
-                  placeholder="e.g., 10"
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Expected Number of Community Attendees</label>
-                <input
-                  type="number"
-                  value={expectedCommunity}
-                  onChange={(e) => setExpectedCommunity(e.target.value)}
-                  placeholder="e.g., 15"
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Expected Number of Other Attendees</label>
-                <input
-                  type="number"
-                  value={expectedOthers}
-                  onChange={(e) => setExpectedOthers(e.target.value)}
-                  placeholder="e.g., 5"
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                />
-              </div>
-            </div>
             </div>
           </div>
-
           {/* Event Classification Section */}
           <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
             <div className="flex items-center gap-3 mb-6">

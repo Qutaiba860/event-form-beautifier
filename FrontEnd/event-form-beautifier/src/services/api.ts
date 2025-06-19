@@ -1,6 +1,5 @@
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
-
+export const API_BASE_URL = "http://192.168.72.1:8000/api"; // or localhost
 export interface User {
   id: number;
   first_name: string;
@@ -32,8 +31,8 @@ export interface Budget {
   id: number;
   item_name: string;
   item_quantity: number;
-  item_cost: string;
-  total_cost: string;
+  item_cost: number;
+  total_cost: number;
   budget_status: string;
   event: number;
 }
@@ -63,9 +62,9 @@ class ApiService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    
+
     if (!response.ok) throw new Error('Login failed');
-    
+
     const data = await response.json();
     localStorage.setItem('access_token', data.access);
     localStorage.setItem('refresh_token', data.refresh);
@@ -102,6 +101,14 @@ class ApiService {
     if (!response.ok) throw new Error('Failed to fetch events');
     return response.json();
   }
+
+  async getEventById(id: number | string): Promise<Event> {
+  const response = await fetch(`${API_BASE_URL}/events/${id}/`, {
+    headers: this.getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Failed to fetch event");
+  return response.json();
+}
 
   async createEvent(eventData: Partial<Event>): Promise<Event> {
     const response = await fetch(`${API_BASE_URL}/events/`, {
