@@ -1,6 +1,14 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiService, User } from '@/services/api';
+
+export interface User {
+  id: number;
+  first_name: string;
+  last_name: string;
+  department: string;
+  email: string;
+  phone: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -24,33 +32,50 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Dummy users for testing
+const dummyUsers: { [key: string]: User } = {
+  'user@aurak.ac.ae': {
+    id: 1,
+    first_name: 'John',
+    last_name: 'Doe',
+    department: 'Computer Science',
+    email: 'user@aurak.ac.ae',
+    phone: '+971501234567'
+  },
+  'admin@aurak.ac.ae': {
+    id: 2,
+    first_name: 'Admin',
+    last_name: 'User',
+    department: 'Administration',
+    email: 'admin@aurak.ac.ae',
+    phone: '+971507654321'
+  }
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      apiService.getCurrentUser()
-        .then(setUser)
-        .catch(() => {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-        })
-        .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
+    const userEmail = localStorage.getItem('user_email');
+    if (userEmail && dummyUsers[userEmail]) {
+      setUser(dummyUsers[userEmail]);
     }
+    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    await apiService.login(email, password);
-    const userData = await apiService.getCurrentUser();
-    setUser(userData);
+    // Simulate login with dummy emails
+    if (dummyUsers[email]) {
+      localStorage.setItem('user_email', email);
+      setUser(dummyUsers[email]);
+    } else {
+      throw new Error('Invalid credentials');
+    }
   };
 
   const logout = () => {
-    apiService.logout();
+    localStorage.removeItem('user_email');
     setUser(null);
   };
 
