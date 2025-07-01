@@ -7,7 +7,7 @@ import { Shield, ArrowLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE_URL } from "@/config";
-import { isPrivilegedUser, isNormalUser } from '@/utils/userUtils';
+import { isPrivilegedUser, isNormalUser, isDepartmentAdmin, isUltimateAdmin } from '@/utils/userUtils';
 
 const VerifyOTP = () => {
   const [otp, setOtp] = useState('');
@@ -54,7 +54,7 @@ const VerifyOTP = () => {
       });
 
       // Route based on user type
-      if (isPrivilegedUser(email)) {
+      if (isPrivilegedUser(email) || isDepartmentAdmin(email) || isUltimateAdmin(email)) {
         navigate("/admin-dashboard");
       } else if (isNormalUser(email)) {
         navigate("/dashboard");

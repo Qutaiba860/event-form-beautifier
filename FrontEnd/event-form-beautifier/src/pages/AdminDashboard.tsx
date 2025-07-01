@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService, Event } from '@/services/api';
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import EventViewModal from '@/components/EventViewModal';
 import { Filter, Users, Calendar, Download, Eye } from 'lucide-react';
+import { getDepartmentForAdmin, isUltimateAdmin, getUserRole } from '@/utils/userUtils';
 
 const AdminDashboard = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -23,12 +25,22 @@ const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
 
+  const userEmail = user?.email || '';
+  const userRole = getUserRole(userEmail);
+  const adminDepartment = getDepartmentForAdmin(userEmail);
+  const canViewAllEvents = isUltimateAdmin(userEmail);
+
   useEffect(() => {
     fetchEvents();
   }, []);
 
   useEffect(() => {
     let filtered = events;
+
+    // Filter by department access first
+    if (!canViewAllEvents && adminDepartment) {
+      filtered = filtered.filter(event => event.department === adminDepartment);
+    }
 
     if (searchTerm) {
       filtered = filtered.filter(event =>
@@ -46,7 +58,7 @@ const AdminDashboard = () => {
     }
 
     setFilteredEvents(filtered);
-  }, [events, searchTerm, statusFilter, departmentFilter]);
+  }, [events, searchTerm, statusFilter, departmentFilter, canViewAllEvents, adminDepartment]);
 
   const fetchEvents = async () => {
     try {
@@ -163,6 +175,18 @@ const AdminDashboard = () => {
     );
   }
 
+  const getDashboardTitle = () => {
+    if (canViewAllEvents) return 'Ultimate Admin Dashboard';
+    if (adminDepartment) return `${adminDepartment} - Admin Dashboard`;
+    return 'Admin Dashboard';
+  };
+
+  const getDashboardDescription = () => {
+    if (canViewAllEvents) return 'Manage and approve all events across all departments';
+    if (adminDepartment) return `Manage and approve events for ${adminDepartment}`;
+    return 'Manage and approve events';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <div className="container mx-auto py-8 px-4">
@@ -170,9 +194,14 @@ const AdminDashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              Admin Dashboard
+              {getDashboardTitle()}
             </h1>
-            <p className="text-muted-foreground mt-2">Manage and approve events</p>
+            <p className="text-muted-foreground mt-2">{getDashboardDescription()}</p>
+            {adminDepartment && !canViewAllEvents && (
+              <p className="text-sm text-blue-600 mt-1">
+                Viewing events for: {adminDepartment}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <Button
@@ -218,20 +247,22 @@ const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Department</label>
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All departments" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map(dept => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {canViewAllEvents && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Department</label>
+                  <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All departments" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {departments.map(dept => (
+                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
