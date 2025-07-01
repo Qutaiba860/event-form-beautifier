@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService, Event } from '@/services/api';
@@ -37,9 +36,46 @@ const AdminDashboard = () => {
   useEffect(() => {
     let filtered = events;
 
+    // Debug information
+    console.log('Admin Department:', adminDepartment);
+    console.log('Can View All Events:', canViewAllEvents);
+    console.log('User Email:', userEmail);
+    console.log('All Events:', events.map(e => ({ name: e.name, department: e.department })));
+
     // Filter by department access first
     if (!canViewAllEvents && adminDepartment) {
-      filtered = filtered.filter(event => event.department === adminDepartment);
+      // More flexible department matching - check if event department contains admin department or vice versa
+      filtered = filtered.filter(event => {
+        const eventDept = event.department?.toLowerCase().trim() || '';
+        const adminDept = adminDepartment.toLowerCase().trim();
+        
+        console.log(`Comparing event dept: "${eventDept}" with admin dept: "${adminDept}"`);
+        
+        // Exact match
+        if (eventDept === adminDept) return true;
+        
+        // Check if admin department contains key words from event department
+        if (adminDept.includes('accounting') && eventDept.includes('accounting')) return true;
+        if (adminDept.includes('finance') && eventDept.includes('finance')) return true;
+        if (adminDept.includes('civil') && eventDept.includes('civil')) return true;
+        if (adminDept.includes('chemical') && eventDept.includes('chemical')) return true;
+        if (adminDept.includes('petroleum') && eventDept.includes('petroleum')) return true;
+        if (adminDept.includes('computer') && eventDept.includes('computer')) return true;
+        if (adminDept.includes('electrical') && eventDept.includes('electrical')) return true;
+        if (adminDept.includes('electronic') && eventDept.includes('electronic')) return true;
+        if (adminDept.includes('mechanical') && eventDept.includes('mechanical')) return true;
+        if (adminDept.includes('architecture') && eventDept.includes('architecture')) return true;
+        if (adminDept.includes('biotechnology') && eventDept.includes('biotechnology')) return true;
+        if (adminDept.includes('humanities') && eventDept.includes('humanities')) return true;
+        if (adminDept.includes('social') && eventDept.includes('social')) return true;
+        if (adminDept.includes('mathematics') && eventDept.includes('mathematics')) return true;
+        if (adminDept.includes('physics') && eventDept.includes('physics')) return true;
+        if (adminDept.includes('management') && eventDept.includes('management')) return true;
+        
+        return false;
+      });
+      
+      console.log('Filtered Events for Department:', filtered.map(e => ({ name: e.name, department: e.department })));
     }
 
     if (searchTerm) {
@@ -198,9 +234,14 @@ const AdminDashboard = () => {
             </h1>
             <p className="text-muted-foreground mt-2">{getDashboardDescription()}</p>
             {adminDepartment && !canViewAllEvents && (
-              <p className="text-sm text-blue-600 mt-1">
-                Viewing events for: {adminDepartment}
-              </p>
+              <div className="mt-2 space-y-1">
+                <p className="text-sm text-blue-600">
+                  Viewing events for: {adminDepartment}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Debug: Found {filteredEvents.length} events for your department
+                </p>
+              </div>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -216,6 +257,23 @@ const AdminDashboard = () => {
             <Button variant="outline" onClick={logout}>Logout</Button>
           </div>
         </div>
+
+        {/* Debug Information for Department Admins */}
+        {!canViewAllEvents && adminDepartment && (
+          <Card className="mb-6 bg-yellow-50 border-yellow-200">
+            <CardHeader>
+              <CardTitle className="text-yellow-800">Debug Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm space-y-2">
+                <p><strong>Your Department:</strong> {adminDepartment}</p>
+                <p><strong>Total Events in System:</strong> {events.length}</p>
+                <p><strong>Events for Your Department:</strong> {filteredEvents.length}</p>
+                <p><strong>All Event Departments:</strong> {Array.from(new Set(events.map(e => e.department))).join(', ')}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
         <Card className="mb-6">
