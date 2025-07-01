@@ -7,7 +7,8 @@ export const privilegedEmails = [
 ];
 
 export const normalUserEmails = [
-  "lm1006500@gmail.com"
+  "lm1006500@gmail.com",
+  "ganajad412@iridales.com"
 ];
 
 // Department-specific admin mappings
