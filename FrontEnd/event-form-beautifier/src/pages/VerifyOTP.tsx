@@ -7,7 +7,7 @@ import { Shield, ArrowLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE_URL } from "@/config";
-import { isPrivilegedUser } from '@/utils/userUtils';
+import { isPrivilegedUser, isNormalUser } from '@/utils/userUtils';
 
 const VerifyOTP = () => {
   const [otp, setOtp] = useState('');
@@ -53,10 +53,13 @@ const VerifyOTP = () => {
         description: "You have been successfully logged in.",
       });
 
-      // Route based on whether the email is privileged
+      // Route based on user type
       if (isPrivilegedUser(email)) {
         navigate("/admin-dashboard");
+      } else if (isNormalUser(email)) {
+        navigate("/dashboard");
       } else {
+        // Default route for unrecognized emails
         navigate("/dashboard");
       }
     } catch (error) {
