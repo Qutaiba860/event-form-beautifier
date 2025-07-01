@@ -17,6 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from events.api_views import submit_event
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 
 urlpatterns = [  # Include the events app URLs
@@ -26,4 +30,8 @@ urlpatterns = [  # Include the events app URLs
     path('api/', include('budget.urls')),
     path('api/', include('media.urls')),
     path('api/events/submit/', submit_event, name='submit_event'),
+    # path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # path('api/auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/', include('authentication.urls')),
 ]

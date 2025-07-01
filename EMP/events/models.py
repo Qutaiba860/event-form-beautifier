@@ -32,6 +32,7 @@ class Event(models.Model):
     expected_community = models.IntegerField(blank=True, null=True)
     expected_others = models.IntegerField(blank=True, null=True)
     target_audience = models.CharField(max_length=255, blank=True)
+    creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_events")
 
 
     def __str__(self):

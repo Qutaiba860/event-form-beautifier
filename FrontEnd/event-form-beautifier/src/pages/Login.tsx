@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Mail } from 'lucide-react';
-
+import { API_BASE_URL } from "@/config";
 const Login = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -15,19 +15,38 @@ const Login = () => {
   const { toast } = useToast();
 
   const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  e.preventDefault();
+  setIsLoading(true);
 
-    // Simulate OTP sending
-    setTimeout(() => {
-      toast({
-        title: "OTP Sent!",
-        description: "Please check your email for the verification code.",
-      });
-      setIsLoading(false);
-      navigate('/verify-otp', { state: { email } });
-    }, 1500);
-  };
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/otp/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to send OTP");
+    }
+
+    toast({
+      title: "OTP Sent!",
+      description: "Please check your email (console) for the verification code.",
+    });
+
+    navigate("/verify-otp", { state: { email } });
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to send OTP. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-red-100 py-12 px-4">

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService, Event } from '@/services/api';
@@ -9,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Filter, Users, Calendar } from 'lucide-react';
+import EventViewModal from '@/components/EventViewModal';
+import { Filter, Users, Calendar, Download, Eye } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -18,6 +18,8 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { user, logout } = useAuth();
   const { toast } = useToast();
 
@@ -80,6 +82,68 @@ const AdminDashboard = () => {
     }
   };
 
+  const exportEventsToCSV = (eventsToExport: Event[], filename: string) => {
+    const headers = [
+      'Event Name', 'Host', 'Department', 'Start Date', 'End Date',
+      'Start Time', 'End Time', 'Venue', 'Location', 'Category', 'Status',
+      'Expected Students', 'Expected Faculty', 'Expected Community', 'Expected Others',
+      'Description', 'Goals'
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      ...eventsToExport.map(event => [
+        `"${event.name}"`,
+        `"${event.host}"`,
+        `"${event.department}"`,
+        event.start_date,
+        event.end_date,
+        event.start_time,
+        event.end_time,
+        `"${event.venue}"`,
+        `"${event.location}"`,
+        event.category,
+        event.status,
+        event.expected_students ?? 0,
+        event.expected_faculty ?? 0,
+        event.expected_community ?? 0,
+        event.expected_others ?? 0,
+        `"${event.description}"`,
+        `"${event.goals}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Export Successful",
+      description: `${eventsToExport.length} event(s) exported to ${filename}`,
+    });
+  };
+
+  const handleExportFiltered = () => {
+    const filename = `filtered_events_${new Date().toISOString().split('T')[0]}.csv`;
+    exportEventsToCSV(filteredEvents, filename);
+  };
+
+  const handleExportSingle = (event: Event) => {
+    const filename = `${event.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${event.id}.csv`;
+    exportEventsToCSV([event], filename);
+  };
+
+  const handleViewEvent = (event: Event) => {
+    setSelectedEvent(event);
+    setIsModalOpen(true);
+  };
+
   const getStatusBadgeVariant = (status: string) => {
     switch (status.toLowerCase()) {
       case 'approved': return 'default';
@@ -111,44 +175,17 @@ const AdminDashboard = () => {
             <p className="text-muted-foreground mt-2">Manage and approve events</p>
           </div>
           <div className="flex items-center gap-4">
+            <Button
+              onClick={handleExportFiltered}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={filteredEvents.length === 0}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Filtered Events ({filteredEvents.length})
+            </Button>
             <span className="text-sm text-muted-foreground">Welcome, {user?.first_name}</span>
             <Button variant="outline" onClick={logout}>Logout</Button>
           </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{events.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {events.filter(e => e.status.toLowerCase() === 'pending').length}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Approved Events</CardTitle>
-              <Filter className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {events.filter(e => e.status.toLowerCase() === 'approved').length}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Filters */}
@@ -230,7 +267,24 @@ const AdminDashboard = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewEvent(event)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleExportSingle(event)}
+                          className="bg-green-50 hover:bg-green-100"
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          Export
+                        </Button>
                         {event.status.toLowerCase() !== 'approved' && (
                           <Button
                             size="sm"
@@ -257,6 +311,12 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <EventViewModal
+        event={selectedEvent}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 };

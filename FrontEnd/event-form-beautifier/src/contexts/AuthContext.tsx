@@ -1,21 +1,13 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-export interface User {
-  id: number;
-  first_name: string;
-  last_name: string;
-  department: string;
-  email: string;
-  phone: string;
-}
+import { apiService, User } from '@/services/api';
 
 interface AuthContextType {
-  user: User | null;
+  user: Partial<User> | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  setUser: (user: Partial<User> | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,50 +24,33 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Dummy users for testing
-const dummyUsers: { [key: string]: User } = {
-  'user@aurak.ac.ae': {
-    id: 1,
-    first_name: 'John',
-    last_name: 'Doe',
-    department: 'Computer Science',
-    email: 'user@aurak.ac.ae',
-    phone: '+971501234567'
-  },
-  'admin@aurak.ac.ae': {
-    id: 2,
-    first_name: 'Admin',
-    last_name: 'User',
-    department: 'Administration',
-    email: 'admin@aurak.ac.ae',
-    phone: '+971507654321'
-  }
-};
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<Partial<User> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const userEmail = localStorage.getItem('user_email');
-    if (userEmail && dummyUsers[userEmail]) {
-      setUser(dummyUsers[userEmail]);
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      apiService.getCurrentUser()
+        .then(setUser)
+        .catch(() => {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        })
+        .finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate login with dummy emails
-    if (dummyUsers[email]) {
-      localStorage.setItem('user_email', email);
-      setUser(dummyUsers[email]);
-    } else {
-      throw new Error('Invalid credentials');
-    }
+    await apiService.login(email, password);
+    const userData = await apiService.getCurrentUser();
+    setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('user_email');
+    apiService.logout();
     setUser(null);
   };
 
@@ -84,7 +59,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    setUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

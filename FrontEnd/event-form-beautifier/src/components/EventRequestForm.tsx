@@ -10,6 +10,7 @@ import {
   Trash2,
   Building2,
 } from "lucide-react";
+import { API_BASE_URL } from "@/config";
 
 export default function EventRequestForm() {
   const [needsBudget, setNeedsBudget] = useState(false);
@@ -28,6 +29,7 @@ export default function EventRequestForm() {
   const [host, setHost] = useState("");
   const [description, setDescription] = useState("");
   const [goals, setGoals] = useState("");
+  const [customGoal, setCustomGoal] = useState("");
   const [venue, setVenue] = useState("");
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -42,16 +44,13 @@ export default function EventRequestForm() {
 
   // Classification
   const [category, setCategory] = useState("");
-  const [targetAudience, setTargetAudience] = useState("");
-
-  // API Base URL (may need to change based on your current IP)
-  const API_BASE_URL = "http://192.168.72.1:8000";
+  const [targetAudience, setTargetAudience] = useState([]);
 
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-    useEffect(() => {
+  useEffect(() => {
     const sum =
       Number(expectedStudents) +
       Number(expectedFaculty) +
@@ -60,72 +59,93 @@ export default function EventRequestForm() {
     setTotalExpected(sum);
   }, [expectedStudents, expectedFaculty, expectedCommunity, expectedOthers]);
 
+  const handleTargetAudienceChange = (audience) => {
+    setTargetAudience(prev => {
+      if (prev.includes(audience)) {
+        return prev.filter(item => item !== audience);
+      } else {
+        return [...prev, audience];
+      }
+    });
+  };
+
+  const handleGoalChange = (selectedGoal) => {
+    setGoals(selectedGoal);
+    if (selectedGoal !== "Other") {
+      setCustomGoal("");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true); // Disable button
-    setSuccessMessage(""); // Clear old message
+    setIsSubmitting(true);
+    setSuccessMessage("");
 
+    // Determine final goal value
+    let finalGoal = goals;
+    if (goals === "Other" && customGoal.trim()) {
+      finalGoal = customGoal.trim();
+    }
 
-
-      const payload = {
-    status: "Pending",
-    name: eventName,
-    start_date: startDate,
-    end_date: endDate,
-    start_time: startTime + ":00",
-    end_time: endTime + ":00",
-    description,
-    host,
-    venue,
-    location,
-    category,
-    department,
-    goals,
-    expected_students: parseInt(expectedStudents),
-    expected_faculty: parseInt(expectedFaculty),
-    expected_community: parseInt(expectedCommunity),
-    expected_others: parseInt(expectedOthers),
-    full_name: fullName,
-    email,
-    phone,
-    target_audience: targetAudience,
-  };
+    const payload = {
+      status: "Pending",
+      name: eventName,
+      start_date: startDate,
+      end_date: endDate,
+      start_time: startTime + ":00",
+      end_time: endTime + ":00",
+      description,
+      host,
+      venue,
+      location,
+      category,
+      department,
+      goals: finalGoal,
+      expected_students: parseInt(expectedStudents),
+      expected_faculty: parseInt(expectedFaculty),
+      expected_community: parseInt(expectedCommunity),
+      expected_others: parseInt(expectedOthers),
+      full_name: fullName,
+      email,
+      phone,
+      target_audience: targetAudience.join(", "),
+    };
 
     console.log("Submitting Event payload:", payload);
 
- try {
-    const eventData = await apiService.createEvent(payload);
-    const eventId = eventData.id;
-    console.log("✅ Event created:", eventData);
+    try {
+      const eventData = await apiService.createEvent(payload);
+      const eventId = eventData.id;
+      console.log("✅ Event created:", eventData);
 
-    for (const item of items) {
-      if (
-        item.name.trim() === "" &&
-        item.quantity === "" &&
-        item.price === "" &&
-        item.totalPrice === ""
-      ) continue;
+      for (const item of items) {
+        if (
+          item.name.trim() === "" &&
+          item.quantity === "" &&
+          item.price === "" &&
+          item.totalPrice === ""
+        ) continue;
 
-      const budgetPayload = {
-        item_name: item.name,
-        item_quantity: parseInt(item.quantity),
-        item_cost: parseFloat(item.price),
-        total_cost: parseFloat(item.totalPrice),
-        budget_status: "Pending",
-        event: eventId,
-      };
+        const budgetPayload = {
+          item_name: item.name,
+          item_quantity: parseInt(item.quantity),
+          item_cost: parseFloat(item.price),
+          total_cost: parseFloat(item.totalPrice),
+          budget_status: "Pending",
+          event: eventId,
+        };
 
-      await apiService.createBudget(budgetPayload);
+        await apiService.createBudget(budgetPayload);
+      }
+
+      setSuccessMessage("Event and Budget items submitted successfully!");
+    } catch (error) {
+      console.error("❌ Submission error:", error);
+      alert("Submission failed. Check console.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setSuccessMessage("Event and Budget items submitted successfully!");
-  } catch (error) {
-    console.error("❌ Submission error:", error);
-    alert("Submission failed. Check console.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   const handleAddItem = () => {
     setItems([...items, { name: "", quantity: "", price: "", totalPrice: "" }]);
@@ -141,6 +161,16 @@ export default function EventRequestForm() {
     const updatedItems = items.filter((_, i) => i !== index);
     setItems(updatedItems);
   };
+
+  const goalOptions = [
+    "Enhance Academic Learning",
+    "Raise Awareness for a Cause",
+    "Strengthen University-Community Relations",
+    "Celebrate Achievements or Milestones",
+    "Support Career Development",
+    "Test or Launch a New Initiative",
+    "Other"
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4">
@@ -299,14 +329,28 @@ export default function EventRequestForm() {
                 <label className="text-sm font-medium text-foreground">
                   Event Goal *
                 </label>
-                <textarea
+                <select
                   required
-                  placeholder="What are the objectives and expected outcomes?"
                   value={goals}
-                  onChange={(e) => setGoals(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground resize-none"
-                  rows={3}
-                />
+                  onChange={(e) => handleGoalChange(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                >
+                  <option value="">Select event goal</option>
+                  {goalOptions.map((goal) => (
+                    <option key={goal} value={goal}>
+                      {goal}
+                    </option>
+                  ))}
+                </select>
+                {goals === "Other" && (
+                  <input
+                    required
+                    placeholder="Please specify your custom goal..."
+                    value={customGoal}
+                    onChange={(e) => setCustomGoal(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 backdrop-blur-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-muted-foreground mt-2"
+                  />
+                )}
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
@@ -500,23 +544,21 @@ export default function EventRequestForm() {
 
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground">
-                  Target Audience *
+                  Target Audience * (Select all that apply)
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {["Students", "Faculty", "Community"].map((aud) => (
                     <label
                       key={aud}
                       className={`flex items-center gap-3 p-3 border border-border rounded-xl bg-background/30 hover:bg-background/50 transition-all duration-200 cursor-pointer ${
-                        targetAudience === aud ? "ring-2 ring-blue-500" : ""
+                        targetAudience.includes(aud) ? "ring-2 ring-blue-500" : ""
                       }`}
                     >
                       <input
-                        type="radio"
-                        required
-                        name="targetAudience"
+                        type="checkbox"
                         value={aud}
-                        checked={targetAudience === aud}
-                        onChange={() => setTargetAudience(aud)}
+                        checked={targetAudience.includes(aud)}
+                        onChange={() => handleTargetAudienceChange(aud)}
                         className="text-primary"
                       />
                       <span className="text-foreground">{aud}</span>
@@ -527,7 +569,6 @@ export default function EventRequestForm() {
             </div>
           </div>
 
-          {/* Resources Section */}
           <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">

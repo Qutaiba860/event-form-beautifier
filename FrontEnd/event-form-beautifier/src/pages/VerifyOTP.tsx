@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Shield, ArrowLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL } from "@/config";
 
 const VerifyOTP = () => {
   const [otp, setOtp] = useState('');
@@ -13,47 +14,80 @@ const VerifyOTP = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+  const { setUser } = useAuth();
+
   const email = location.state?.email || '';
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length !== 6) {
-      toast({
-        title: "Invalid OTP",
-        description: "Please enter a 6-digit code.",
-        variant: "destructive",
-      });
-      return;
-    }
+  e.preventDefault();
 
-    setIsLoading(true);
+  if (otp.length !== 6) {
+    toast({
+      title: "Invalid OTP",
+      description: "Please enter a 6-digit code.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    // Simulate OTP verification
-    setTimeout(() => {
-      if (otp === '123456') {
-        toast({
-          title: "Welcome to AURAK!",
-          description: "You have been successfully logged in.",
-        });
-        navigate('/dashboard');
-      } else {
-        toast({
-          title: "Invalid OTP",
-          description: "Please check your code and try again.",
-          variant: "destructive",
-        });
-      }
-      setIsLoading(false);
-    }, 1500);
-  };
+  setIsLoading(true);
 
-  const handleResendOTP = () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/otp/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, otp }),
+    });
+
+    if (!response.ok) throw new Error("OTP verification failed");
+
+    const data = await response.json();
+
+    localStorage.setItem("access_token", data.access);
+    localStorage.setItem("refresh_token", data.refresh);
+    setUser(data.user);
+
+    toast({
+      title: "Success!",
+      description: "You have been successfully logged in.",
+    });
+
+  if (data.user.role === "admin") {
+    navigate("/admin-dashboard");
+  } else {
+    navigate("/dashboard");
+  }
+  } catch (error) {
+    toast({
+      title: "Verification failed",
+      description: "Invalid OTP. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  const handleResendOTP = async () => {
+  try {
+    await fetch(`${API_BASE_URL}/api/auth/otp/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+
     toast({
       title: "OTP Resent!",
-      description: "Please check your email for the new verification code.",
+      description: "Check your email again.",
     });
-  };
+  } catch (error) {
+    toast({
+      title: "Resend failed",
+      description: "Unable to resend OTP. Try again later.",
+      variant: "destructive",
+    });
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-red-100 py-12 px-4">
@@ -69,32 +103,23 @@ const VerifyOTP = () => {
         </CardHeader>
         <CardContent className="p-8">
           <div className="mb-6 text-center">
-            <p className="text-gray-600">
-              We've sent a 6-digit verification code to
-            </p>
+            <p className="text-gray-600">We've sent a 6-digit verification code to</p>
             <p className="text-red-600 font-medium mt-1">{email}</p>
           </div>
 
           <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div className="flex justify-center">
-              <InputOTP
-                maxLength={6}
-                value={otp}
-                onChange={(value) => setOtp(value)}
-              >
+              <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)}>
                 <InputOTPGroup>
-                  <InputOTPSlot index={0} className="border-red-200 focus:border-red-500" />
-                  <InputOTPSlot index={1} className="border-red-200 focus:border-red-500" />
-                  <InputOTPSlot index={2} className="border-red-200 focus:border-red-500" />
-                  <InputOTPSlot index={3} className="border-red-200 focus:border-red-500" />
-                  <InputOTPSlot index={4} className="border-red-200 focus:border-red-500" />
-                  <InputOTPSlot index={5} className="border-red-200 focus:border-red-500" />
+                  {[0, 1, 2, 3, 4, 5].map(index => (
+                    <InputOTPSlot key={index} index={index} className="border-red-200 focus:border-red-500" />
+                  ))}
                 </InputOTPGroup>
               </InputOTP>
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 transition-colors duration-200"
               disabled={isLoading || otp.length !== 6}
             >
@@ -104,29 +129,16 @@ const VerifyOTP = () => {
 
           <div className="mt-6 space-y-4">
             <div className="text-center">
-              <button
-                onClick={handleResendOTP}
-                className="text-red-600 hover:text-red-700 text-sm font-medium underline"
-              >
+              <button onClick={handleResendOTP} className="text-red-600 hover:text-red-700 text-sm font-medium underline">
                 Didn't receive the code? Resend OTP
               </button>
             </div>
-            
             <div className="text-center">
-              <button
-                onClick={() => navigate('/login')}
-                className="inline-flex items-center text-gray-600 hover:text-gray-700 text-sm"
-              >
+              <button onClick={() => navigate('/login')} className="inline-flex items-center text-gray-600 hover:text-gray-700 text-sm">
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back to login
               </button>
             </div>
-          </div>
-
-          <div className="mt-6 p-4 bg-red-50 rounded-lg border border-red-200">
-            <p className="text-xs text-red-700 text-center">
-              For demo purposes, use code: <span className="font-mono font-bold">123456</span>
-            </p>
           </div>
         </CardContent>
       </Card>
