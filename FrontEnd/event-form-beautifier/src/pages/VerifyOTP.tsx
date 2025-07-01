@@ -7,6 +7,7 @@ import { Shield, ArrowLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE_URL } from "@/config";
+import { isPrivilegedUser } from '@/utils/userUtils';
 
 const VerifyOTP = () => {
   const [otp, setOtp] = useState('');
@@ -19,75 +20,76 @@ const VerifyOTP = () => {
   const email = location.state?.email || '';
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (otp.length !== 6) {
-    toast({
-      title: "Invalid OTP",
-      description: "Please enter a 6-digit code.",
-      variant: "destructive",
-    });
-    return;
-  }
+    if (otp.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter a 6-digit code.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/otp/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp }),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/otp/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      });
 
-    if (!response.ok) throw new Error("OTP verification failed");
+      if (!response.ok) throw new Error("OTP verification failed");
 
-    const data = await response.json();
+      const data = await response.json();
 
-    localStorage.setItem("access_token", data.access);
-    localStorage.setItem("refresh_token", data.refresh);
-    setUser(data.user);
+      localStorage.setItem("access_token", data.access);
+      localStorage.setItem("refresh_token", data.refresh);
+      setUser(data.user);
 
-    toast({
-      title: "Success!",
-      description: "You have been successfully logged in.",
-    });
+      toast({
+        title: "Success!",
+        description: "You have been successfully logged in.",
+      });
 
-  if (data.user.role === "admin") {
-    navigate("/admin-dashboard");
-  } else {
-    navigate("/dashboard");
-  }
-  } catch (error) {
-    toast({
-      title: "Verification failed",
-      description: "Invalid OTP. Please try again.",
-      variant: "destructive",
-    });
-  } finally {
-    setIsLoading(false);
-  }
-};
+      // Route based on whether the email is privileged
+      if (isPrivilegedUser(email)) {
+        navigate("/admin-dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      toast({
+        title: "Verification failed",
+        description: "Invalid OTP. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleResendOTP = async () => {
-  try {
-    await fetch(`${API_BASE_URL}/api/auth/otp/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
-    });
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/otp/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
 
-    toast({
-      title: "OTP Resent!",
-      description: "Check your email again.",
-    });
-  } catch (error) {
-    toast({
-      title: "Resend failed",
-      description: "Unable to resend OTP. Try again later.",
-      variant: "destructive",
-    });
-  }
-};
+      toast({
+        title: "OTP Resent!",
+        description: "Check your email again.",
+      });
+    } catch (error) {
+      toast({
+        title: "Resend failed",
+        description: "Unable to resend OTP. Try again later.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-red-100 py-12 px-4">
