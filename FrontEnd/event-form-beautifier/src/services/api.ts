@@ -217,18 +217,55 @@ class ApiService {
     const response = await fetch(url, {
       headers: this.getAuthHeaders(),
     });
-    if (!response.ok) throw new Error("Failed to fetch documents");
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to fetch documents:", response.status, errorText);
+      throw new Error(`Failed to fetch documents: ${response.status}`);
+    }
     return response.json();
   }
 
   async createDocument(documentData: Partial<Document>): Promise<Document> {
-    const response = await fetch(`${API_BASE_URL}/api/documents/`, {
-      method: "POST",
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(documentData),
-    });
-    if (!response.ok) throw new Error("Failed to create document");
-    return response.json();
+    console.log("API: Creating document with data:", documentData);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/documents/`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(documentData),
+      });
+      
+      console.log("API: Document creation response status:", response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API: Document creation failed:", response.status, errorText);
+        
+        let errorMessage = `Failed to create document (${response.status})`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.detail) {
+            errorMessage = errorJson.detail;
+          } else if (errorJson.error) {
+            errorMessage = errorJson.error;
+          }
+        } catch (e) {
+          // If JSON parsing fails, use the raw text
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      const result = await response.json();
+      console.log("API: Document created successfully:", result);
+      return result;
+    } catch (error) {
+      console.error("API: Error in createDocument:", error);
+      throw error;
+    }
   }
 
   async deleteDocument(id: number): Promise<void> {
@@ -236,7 +273,11 @@ class ApiService {
       method: "DELETE",
       headers: this.getAuthHeaders(),
     });
-    if (!response.ok) throw new Error("Failed to delete document");
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to delete document:", response.status, errorText);
+      throw new Error(`Failed to delete document: ${response.status}`);
+    }
   }
 
   async getUsers(): Promise<User[]> {

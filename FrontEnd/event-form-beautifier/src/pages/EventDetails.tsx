@@ -146,17 +146,21 @@ const EventDetails = () => {
         const uploadPromises = Array.from(files).map(async (file) => {
           console.log("Uploading file:", file.name, "Size:", file.size, "Type:", file.type);
           
+          // Create a more robust document data object
           const documentData = {
             name: file.name,
             type: file.type || 'application/octet-stream',
-            url: URL.createObjectURL(file),
             size: file.size,
             uploaded_by: user?.id || 1,
             event: Number(id),
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            // Create a temporary URL for now - in production you'd upload to a file storage service
+            url: `temp://document/${file.name}`
           };
           
           console.log("Document data being sent:", documentData);
+          
+          // Try to create the document
           const savedDocument = await apiService.createDocument(documentData);
           console.log("Document saved successfully:", savedDocument);
           
@@ -170,11 +174,25 @@ const EventDetails = () => {
           title: "Documents Uploaded",
           description: `${files.length} document(s) uploaded successfully.`
         });
+        
+        // Clear the file input
+        if (documentInputRef.current) {
+          documentInputRef.current.value = '';
+        }
       } catch (error) {
         console.error("Document upload error:", error);
+        
+        // More detailed error message
+        let errorMessage = 'Unknown error occurred';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+        
         toast({
           title: "Upload Error",
-          description: `Failed to upload documents: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          description: `Failed to upload documents: ${errorMessage}`,
           variant: "destructive"
         });
       }
