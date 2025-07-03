@@ -115,7 +115,6 @@ const EventDetails = () => {
             event: Number(id)
           };
           
-          // Save to database
           const savedMedia = await apiService.createMedia(mediaData);
           return savedMedia;
         });
@@ -128,6 +127,7 @@ const EventDetails = () => {
           description: `${files.length} file(s) uploaded successfully.`
         });
       } catch (error) {
+        console.error("Media upload error:", error);
         toast({
           title: "Upload Error",
           description: "Failed to upload media.",
@@ -139,12 +139,16 @@ const EventDetails = () => {
 
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
+    if (files && files.length > 0) {
+      console.log("Starting document upload...", files.length, "files");
+      
       try {
         const uploadPromises = Array.from(files).map(async (file) => {
+          console.log("Uploading file:", file.name, "Size:", file.size, "Type:", file.type);
+          
           const documentData = {
             name: file.name,
-            type: file.type,
+            type: file.type || 'application/octet-stream',
             url: URL.createObjectURL(file),
             size: file.size,
             uploaded_by: user?.id || 1,
@@ -152,8 +156,10 @@ const EventDetails = () => {
             created_at: new Date().toISOString()
           };
           
-          // Save to database
+          console.log("Document data being sent:", documentData);
           const savedDocument = await apiService.createDocument(documentData);
+          console.log("Document saved successfully:", savedDocument);
+          
           return savedDocument;
         });
 
@@ -165,9 +171,10 @@ const EventDetails = () => {
           description: `${files.length} document(s) uploaded successfully.`
         });
       } catch (error) {
+        console.error("Document upload error:", error);
         toast({
           title: "Upload Error",
-          description: "Failed to upload documents.",
+          description: `Failed to upload documents: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive"
         });
       }
@@ -176,11 +183,11 @@ const EventDetails = () => {
 
   const handleRemoveMedia = async (mediaId: number) => {
     try {
-      // Remove from database (you'll need to add this method to apiService)
-      // await apiService.deleteMedia(mediaId);
+      await apiService.deleteMedia(mediaId);
       setUploadedMedia(prev => prev.filter(media => media.id !== mediaId));
       toast({ title: "Media Removed", description: "File removed successfully." });
     } catch (error) {
+      console.error("Error removing media:", error);
       toast({
         title: "Error",
         description: "Failed to remove media.",
@@ -198,6 +205,7 @@ const EventDetails = () => {
         description: "Document removed successfully."
       });
     } catch (error) {
+      console.error("Error removing document:", error);
       toast({
         title: "Error",
         description: "Failed to remove document.",
