@@ -162,15 +162,51 @@ export default function EventRequestForm() {
     setItems(updatedItems);
   };
 
-  const goalOptions = [
-    "Enhance Academic Learning",
-    "Raise Awareness for a Cause",
-    "Strengthen University-Community Relations",
-    "Celebrate Achievements or Milestones",
-    "Support Career Development",
-    "Test or Launch a New Initiative",
-    "Other"
-  ];
+ const goalOptions = [
+  "Connect students with potential employers through career-oriented opportunities",
+  "Encourage knowledge sharing and expert dialogue on relevant topics",
+  "Facilitate student employment opportunities and industry exposure",
+  "Celebrate national pride and cultural identity",
+  "Promote multicultural awareness and inclusion",
+  "Foster patriotism and national unity",
+  "Showcase academic research and stimulate scholarly exchange",
+  "Support entrepreneurial mindset and innovative thinking",
+  "Build bridges between academia and industry through thematic discussions",
+  "Introduce graduate students to academic expectations and community",
+  "Recognize academic and extracurricular excellence",
+  "Celebrate milestones and community achievements",
+  "Welcome new students and support their transition into university life",
+  "Raise awareness on mental health and well-being",
+  "Celebrate community and strengthen relationships",
+  "Foster a sense of belonging during the holy month of Ramadan",
+  "Reconnect with alumni and foster lifelong relationships",
+  "Reward students and staff with social engagement activities",
+  "Showcase the talents and achievements of graduating students",
+  "Encourage student leadership and democratic engagement",
+  "Promote understanding of academic integrity through interactive learning",
+  "Develop public speaking and presentation skills",
+  "Celebrate and empower women globally and locally",
+  "Enhance student wellness and personal development",
+  "Foster student creativity and team collaboration",
+  "Develop technical design and engineering skills",
+  "Engage alumni in networking and mentorship",
+  "Evaluate student projects and provide academic feedback",
+  "Guide project development with interim evaluations",
+  "Assess final project deliverables and outcomes",
+  "Display student creativity and academic accomplishments",
+  "Strengthen ties with industry partners",
+  "Encourage academic discourse and dissemination",
+  "Promote a culture of research and innovation",
+  "Foster industry-academic collaboration",
+  "Support students in securing and reflecting on internships",
+  "Build inter-university relationships and collaboration",
+  "Enhance university engagement with the wider community",
+  "Equip students with essential professional skills",
+  "Build early engagement and awareness with prospective students",
+  "Generate revenue through venue and facility use",
+  "Promote physical activity and teamwork through sports",
+  "Other"
+];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4">

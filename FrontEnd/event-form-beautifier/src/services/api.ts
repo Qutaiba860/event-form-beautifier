@@ -54,6 +54,17 @@ export interface Media {
   size: number;
 }
 
+export interface Document {
+  id: number;
+  name: string;
+  type: string;
+  url: string;
+  size: number;
+  uploaded_by: number;
+  event?: number;
+  created_at: string;
+}
+
 class ApiService {
   private getAuthHeaders() {
     const token = localStorage.getItem("access_token");
@@ -189,6 +200,36 @@ class ApiService {
     });
     if (!response.ok) throw new Error("Failed to create media");
     return response.json();
+  }
+
+  // Document methods
+  async getDocuments(eventId?: number): Promise<Document[]> {
+    const url = eventId
+      ? `${API_BASE_URL}/api/documents/?event=${eventId}`
+      : `${API_BASE_URL}/api/documents/`;
+    const response = await fetch(url, {
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error("Failed to fetch documents");
+    return response.json();
+  }
+
+  async createDocument(documentData: Partial<Document>): Promise<Document> {
+    const response = await fetch(`${API_BASE_URL}/api/documents/`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(documentData),
+    });
+    if (!response.ok) throw new Error("Failed to create document");
+    return response.json();
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/documents/${id}/`, {
+      method: "DELETE",
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error("Failed to delete document");
   }
 
   async getUsers(): Promise<User[]> {

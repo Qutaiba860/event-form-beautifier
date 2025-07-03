@@ -1,14 +1,17 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { apiService } from '@/services/api';
+import { apiService, Document } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Calendar, MapPin, Users, Clock, Upload, Camera,
-  Scan, ArrowLeft, Download, Eye, Plus, X
+  Scan, ArrowLeft, Download, Eye, Plus, X, FileText,
+  File, FileSpreadsheet, FileImage
 } from 'lucide-react';
 
 type Media = {
@@ -47,9 +50,12 @@ const EventDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadedMedia, setUploadedMedia] = useState<Media[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<Document[]>([]);
   const [eventData, setEventData] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [attendanceList, setAttendanceList] = useState<Array<{ id: string, name: string, timestamp: string }>>([]);
@@ -70,6 +76,19 @@ const EventDetails = () => {
     fetchEvent();
   }, [id]);
 
+  useEffect(() => {
+    fetchDocuments();
+  }, [id]);
+
+  const fetchDocuments = async () => {
+    try {
+      const documents = await apiService.getDocuments(Number(id));
+      setUploadedDocuments(documents);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+    }
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
@@ -86,9 +105,79 @@ const EventDetails = () => {
     }
   };
 
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      try {
+        const uploadPromises = Array.from(files).map(async (file) => {
+          const documentData = {
+            name: file.name,
+            type: file.type,
+            url: URL.createObjectURL(file),
+            size: file.size,
+            uploaded_by: user?.id || 1,
+            event: Number(id),
+            created_at: new Date().toISOString()
+          };
+          
+          // Save to database
+          const savedDocument = await apiService.createDocument(documentData);
+          return savedDocument;
+        });
+
+        const savedDocuments = await Promise.all(uploadPromises);
+        setUploadedDocuments(prev => [...prev, ...savedDocuments]);
+        
+        toast({
+          title: "Documents Uploaded",
+          description: `${files.length} document(s) uploaded successfully.`
+        });
+      } catch (error) {
+        toast({
+          title: "Upload Error",
+          description: "Failed to upload documents.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   const handleRemoveMedia = (id: number) => {
     setUploadedMedia(prev => prev.filter(media => media.id !== id));
     toast({ title: "Media Removed", description: "File removed successfully." });
+  };
+
+  const handleRemoveDocument = async (id: number) => {
+    try {
+      await apiService.deleteDocument(id);
+      setUploadedDocuments(prev => prev.filter(doc => doc.id !== id));
+      toast({
+        title: "Document Removed",
+        description: "Document removed successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove document.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getDocumentIcon = (type: string) => {
+    if (type.includes('pdf')) return <FileText className="w-4 h-4 text-red-500" />;
+    if (type.includes('excel') || type.includes('spreadsheet')) return <FileSpreadsheet className="w-4 h-4 text-green-500" />;
+    if (type.includes('word') || type.includes('document')) return <FileText className="w-4 h-4 text-blue-500" />;
+    if (type.includes('presentation') || type.includes('powerpoint')) return <FileImage className="w-4 h-4 text-orange-500" />;
+    return <File className="w-4 h-4 text-gray-500" />;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const handleScanAttendance = () => {
@@ -136,7 +225,7 @@ const EventDetails = () => {
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (!eventData) return <div className="p-8 text-center text-red-500">Event not found.</div>;
 
-  const totalAttendees = eventData.expected_students + eventData.expected_faculty + eventData.expected_community + eventData.expected_others;
+  const totalAttendees = (eventData.expected_students || 0) + (eventData.expected_faculty || 0) + (eventData.expected_community || 0) + (eventData.expected_others || 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-100 py-8 px-4">
@@ -145,6 +234,7 @@ const EventDetails = () => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
         </Button>
 
+        {/* ... keep existing code (Event Overview Card) */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <div className="flex items-center justify-between">
@@ -171,6 +261,7 @@ const EventDetails = () => {
           </CardContent>
         </Card>
 
+        {/* ... keep existing code (Event Media Card) */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <CardTitle className="text-xl font-bold flex items-center">
@@ -212,6 +303,62 @@ const EventDetails = () => {
           </CardContent>
         </Card>
 
+        {/* Event Documents Card - NEW */}
+        <Card className="shadow-xl border-red-200">
+          <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
+            <CardTitle className="text-xl font-bold flex items-center">
+              <FileText className="w-6 h-6 mr-2" /> Event Documents
+            </CardTitle>
+            <CardDescription className="text-red-100">Upload PDF, Excel, Word, PowerPoint and other documents</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="border-2 border-dashed border-red-200 rounded-lg p-6 text-center">
+              <FileText className="w-8 h-8 text-red-400 mx-auto mb-2" />
+              <p className="text-gray-600 mb-4">Drop documents here or click to upload</p>
+              <p className="text-sm text-gray-500 mb-4">Supported formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT</p>
+              <Button onClick={() => documentInputRef.current?.click()} className="bg-red-600 hover:bg-red-700">
+                <Plus className="w-4 h-4 mr-2" /> Add Documents
+              </Button>
+              <input 
+                ref={documentInputRef} 
+                type="file" 
+                multiple 
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" 
+                onChange={handleDocumentUpload} 
+                className="hidden" 
+              />
+            </div>
+
+            {uploadedDocuments.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium">Uploaded Documents ({uploadedDocuments.length}):</h4>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {uploadedDocuments.map((document) => (
+                    <div key={document.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        {getDocumentIcon(document.type)}
+                        <div>
+                          <span className="text-sm font-medium truncate block max-w-xs">{document.name}</span>
+                          <span className="text-xs text-gray-500">{formatFileSize(document.size)}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={() => window.open(document.url)}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleRemoveDocument(document.id)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ... keep existing code (Attendance Tracking Card) */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <div className="flex items-center justify-between">
