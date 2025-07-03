@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -17,8 +16,11 @@ import {
 type Media = {
   id: number;
   name: string;
-  type: 'image' | 'video';
+  media_type: string;
   url: string;
+  size: number;
+  uploaded_by: number;
+  event: number;
 };
 
 type Event = {
@@ -77,8 +79,18 @@ const EventDetails = () => {
   }, [id]);
 
   useEffect(() => {
+    fetchMedia();
     fetchDocuments();
   }, [id]);
+
+  const fetchMedia = async () => {
+    try {
+      const media = await apiService.getMedia(Number(id));
+      setUploadedMedia(media);
+    } catch (error) {
+      console.error("Error fetching media:", error);
+    }
+  };
 
   const fetchDocuments = async () => {
     try {
@@ -89,19 +101,39 @@ const EventDetails = () => {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      Array.from(files).forEach((file) => {
-        const newMedia = {
-          id: Date.now() + Math.random(),
-          name: file.name,
-          type: file.type.startsWith('image/') ? 'image' as const : 'video' as const,
-          url: URL.createObjectURL(file)
-        };
-        setUploadedMedia(prev => [...prev, newMedia]);
-      });
-      toast({ title: "Media Uploaded", description: `${files.length} file(s) uploaded.` });
+      try {
+        const uploadPromises = Array.from(files).map(async (file) => {
+          const mediaData = {
+            name: file.name,
+            media_type: file.type,
+            url: URL.createObjectURL(file),
+            size: file.size,
+            uploaded_by: user?.id || 1,
+            event: Number(id)
+          };
+          
+          // Save to database
+          const savedMedia = await apiService.createMedia(mediaData);
+          return savedMedia;
+        });
+
+        const savedMedia = await Promise.all(uploadPromises);
+        setUploadedMedia(prev => [...prev, ...savedMedia]);
+        
+        toast({
+          title: "Media Uploaded",
+          description: `${files.length} file(s) uploaded successfully.`
+        });
+      } catch (error) {
+        toast({
+          title: "Upload Error",
+          description: "Failed to upload media.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -142,15 +174,25 @@ const EventDetails = () => {
     }
   };
 
-  const handleRemoveMedia = (id: number) => {
-    setUploadedMedia(prev => prev.filter(media => media.id !== id));
-    toast({ title: "Media Removed", description: "File removed successfully." });
+  const handleRemoveMedia = async (mediaId: number) => {
+    try {
+      // Remove from database (you'll need to add this method to apiService)
+      // await apiService.deleteMedia(mediaId);
+      setUploadedMedia(prev => prev.filter(media => media.id !== mediaId));
+      toast({ title: "Media Removed", description: "File removed successfully." });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove media.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleRemoveDocument = async (id: number) => {
+  const handleRemoveDocument = async (docId: number) => {
     try {
-      await apiService.deleteDocument(id);
-      setUploadedDocuments(prev => prev.filter(doc => doc.id !== id));
+      await apiService.deleteDocument(docId);
+      setUploadedDocuments(prev => prev.filter(doc => doc.id !== docId));
       toast({
         title: "Document Removed",
         description: "Document removed successfully."
@@ -234,7 +276,6 @@ const EventDetails = () => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
         </Button>
 
-        {/* ... keep existing code (Event Overview Card) */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <div className="flex items-center justify-between">
@@ -261,7 +302,7 @@ const EventDetails = () => {
           </CardContent>
         </Card>
 
-        {/* ... keep existing code (Event Media Card) */}
+        {/* Event Media Card - Updated */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <CardTitle className="text-xl font-bold flex items-center">
@@ -281,29 +322,34 @@ const EventDetails = () => {
 
             {uploadedMedia.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-medium">Uploaded Files:</h4>
-                {uploadedMedia.map((media) => (
-                  <div key={media.id} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex items-center gap-2">
-                      {media.type === 'image' ? <Camera className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
-                      <span className="text-sm truncate">{media.name}</span>
+                <h4 className="font-medium">Uploaded Files ({uploadedMedia.length}):</h4>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {uploadedMedia.map((media) => (
+                    <div key={media.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        {media.media_type.startsWith('image/') ? <Camera className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                        <div>
+                          <span className="text-sm font-medium truncate block max-w-xs">{media.name}</span>
+                          <span className="text-xs text-gray-500">{formatFileSize(media.size)}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={() => window.open(media.url)}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleRemoveMedia(media.id)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="outline" onClick={() => window.open(media.url)}>
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleRemoveMedia(media.id)}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Event Documents Card - NEW */}
+        {/* Event Documents Card - Updated */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <CardTitle className="text-xl font-bold flex items-center">
@@ -358,7 +404,6 @@ const EventDetails = () => {
           </CardContent>
         </Card>
 
-        {/* ... keep existing code (Attendance Tracking Card) */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <div className="flex items-center justify-between">

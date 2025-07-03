@@ -202,7 +202,14 @@ class ApiService {
     return response.json();
   }
 
-  // Document methods
+  async deleteMedia(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/media/${id}/`, {
+      method: "DELETE",
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error("Failed to delete media");
+  }
+
   async getDocuments(eventId?: number): Promise<Document[]> {
     const url = eventId
       ? `${API_BASE_URL}/api/documents/?event=${eventId}`
