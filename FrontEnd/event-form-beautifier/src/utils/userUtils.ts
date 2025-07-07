@@ -8,7 +8,7 @@ export const privilegedEmails = [
 
 export const normalUserEmails = [
   "lm1006500@gmail.com",
-  "ganajad412@iridales.com"
+  "nadojij156@dxirl.com"
 ];
 
 // Department-specific admin mappings
@@ -23,7 +23,7 @@ export const departmentAdmins = {
   "alexandria.proff@aurak.ac.ae": "Department of Humanities and Social Sciences",
   "hamid.berriche@aurak.ac.ae": "Department of Mathematics and physics",
   "abdelfatah.arman@aurak.ac.ae": "Department of Management",
-  "wadenal609@ofacer.com": "Department of Accounting and Finance"
+  "dowilam762@fuasha.com": "Department of Accounting and Finance"
 };
 
 // Ultimate authority admins who can view all events
