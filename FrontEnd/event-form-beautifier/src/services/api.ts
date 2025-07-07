@@ -153,11 +153,17 @@ class ApiService {
 
   async updateEvent(id: number, eventData: Partial<Event>): Promise<Event> {
     const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
-      method: "PUT",
+      method: "PATCH",
       headers: this.getAuthHeaders(),
       body: JSON.stringify(eventData),
     });
-    if (!response.ok) throw new Error("Failed to update event");
+    
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("Update event error:", response.status, errorData);
+      throw new Error(`Failed to update event: ${response.status}`);
+    }
+    
     return response.json();
   }
 

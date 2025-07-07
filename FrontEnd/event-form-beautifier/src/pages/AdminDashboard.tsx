@@ -99,18 +99,25 @@ const AdminDashboard = () => {
 
   const updateEventStatus = async (eventId: number, newStatus: string) => {
     try {
-      await apiService.updateEvent(eventId, { status: newStatus });
-      setEvents(events.map(event =>
-        event.id === eventId ? { ...event, status: newStatus } : event
-      ));
+      console.log(`Updating event ${eventId} to status: ${newStatus}`);
+      
+      const updatedEvent = await apiService.updateEvent(eventId, { status: newStatus });
+      
+      setEvents(prevEvents => 
+        prevEvents.map(event =>
+          event.id === eventId ? { ...event, status: newStatus } : event
+        )
+      );
+      
       toast({
         title: "Success",
         description: `Event ${newStatus.toLowerCase()} successfully`,
       });
     } catch (error) {
+      console.error("Error updating event status:", error);
       toast({
         title: "Error",
-        description: "Failed to update event status",
+        description: `Failed to ${newStatus.toLowerCase()} event. Please try again.`,
         variant: "destructive",
       });
     }
