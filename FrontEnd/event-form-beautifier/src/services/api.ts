@@ -151,13 +151,30 @@ class ApiService {
   }
 
   async updateEvent(id: number, eventData: Partial<Event>): Promise<Event> {
-    const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
-      method: "PUT",
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(eventData),
-    });
-    if (!response.ok) throw new Error("Failed to update event");
-    return response.json();
+    console.log(`Updating event ${id} with data:`, eventData);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
+        method: "PATCH", // Changed from PUT to PATCH for partial updates
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(eventData),
+      });
+      
+      console.log('Update response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Update failed:', errorText);
+        throw new Error(`Failed to update event: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Event updated successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in updateEvent:', error);
+      throw error;
+    }
   }
 
   async getBudgets(eventId?: number): Promise<Budget[]> {
@@ -250,7 +267,6 @@ class ApiService {
             errorMessage = errorJson.error;
           }
         } catch (e) {
-          // If JSON parsing fails, use the raw text
           if (errorText) {
             errorMessage = errorText;
           }

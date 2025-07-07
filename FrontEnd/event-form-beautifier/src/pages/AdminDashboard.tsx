@@ -109,14 +109,18 @@ const AdminDashboard = () => {
   };
 
   const updateEventStatus = async (eventId: number, newStatus: string) => {
-    console.log(`Updating event ${eventId} to status: ${newStatus}`);
+    console.log(`Attempting to update event ${eventId} to status: ${newStatus}`);
     setUpdatingEventId(eventId);
     
     try {
+      // Find the current event to log its current status
+      const currentEvent = events.find(e => e.id === eventId);
+      console.log('Current event status:', currentEvent?.status);
+      
       const updatedEvent = await apiService.updateEvent(eventId, { status: newStatus });
       console.log('Event updated successfully:', updatedEvent);
       
-      // Update the local state
+      // Update the local state immediately
       setEvents(prevEvents =>
         prevEvents.map(event =>
           event.id === eventId ? { ...event, status: newStatus } : event
@@ -128,11 +132,17 @@ const AdminDashboard = () => {
         description: `Event ${newStatus.toLowerCase()} successfully`,
         variant: "default",
       });
+      
+      // Refresh events to ensure we have the latest data
+      await fetchEvents();
+      
     } catch (error) {
       console.error('Error updating event status:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
       toast({
         title: "Error",
-        description: `Failed to ${newStatus.toLowerCase()} event. Please try again.`,
+        description: `Failed to ${newStatus.toLowerCase()} event: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -140,12 +150,14 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleApprove = (eventId: number) => {
-    updateEventStatus(eventId, 'Approved');
+  const handleApprove = async (eventId: number) => {
+    console.log('Approving event:', eventId);
+    await updateEventStatus(eventId, 'Approved');
   };
 
-  const handleDeny = (eventId: number) => {
-    updateEventStatus(eventId, 'Denied');
+  const handleDeny = async (eventId: number) => {
+    console.log('Denying event:', eventId);
+    await updateEventStatus(eventId, 'Denied');
   };
 
   const exportEventsToCSV = (eventsToExport: Event[], filename: string) => {
