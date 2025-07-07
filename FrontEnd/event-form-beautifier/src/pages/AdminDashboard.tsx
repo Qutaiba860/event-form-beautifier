@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import EventViewModal from '@/components/EventViewModal';
-import { Filter, Users, Calendar, Download, Eye } from 'lucide-react';
+import { Filter, Users, Calendar, Download, Eye, CheckCircle, XCircle } from 'lucide-react';
 import { getDepartmentForAdmin, isUltimateAdmin, getUserRole } from '@/utils/userUtils';
 
 const AdminDashboard = () => {
@@ -21,6 +21,7 @@ const AdminDashboard = () => {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [updatingEventId, setUpdatingEventId] = useState<number | null>(null);
   const { user, logout } = useAuth();
   const { toast } = useToast();
 
@@ -36,15 +37,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     let filtered = events;
 
-    // Debug information
     console.log('Admin Department:', adminDepartment);
     console.log('Can View All Events:', canViewAllEvents);
     console.log('User Email:', userEmail);
-    console.log('All Events:', events.map(e => ({ name: e.name, department: e.department })));
 
     // Filter by department access first
     if (!canViewAllEvents && adminDepartment) {
-      // More flexible department matching - check if event department contains admin department or vice versa
       filtered = filtered.filter(event => {
         const eventDept = event.department?.toLowerCase().trim() || '';
         const adminDept = adminDepartment.toLowerCase().trim();
@@ -74,8 +72,6 @@ const AdminDashboard = () => {
         
         return false;
       });
-      
-      console.log('Filtered Events for Department:', filtered.map(e => ({ name: e.name, department: e.department })));
     }
 
     if (searchTerm) {
@@ -101,6 +97,7 @@ const AdminDashboard = () => {
       const data = await apiService.getEvents();
       setEvents(data);
     } catch (error) {
+      console.error('Error fetching events:', error);
       toast({
         title: "Error",
         description: "Failed to fetch events",
@@ -112,22 +109,43 @@ const AdminDashboard = () => {
   };
 
   const updateEventStatus = async (eventId: number, newStatus: string) => {
+    console.log(`Updating event ${eventId} to status: ${newStatus}`);
+    setUpdatingEventId(eventId);
+    
     try {
-      await apiService.updateEvent(eventId, { status: newStatus });
-      setEvents(events.map(event =>
-        event.id === eventId ? { ...event, status: newStatus } : event
-      ));
+      const updatedEvent = await apiService.updateEvent(eventId, { status: newStatus });
+      console.log('Event updated successfully:', updatedEvent);
+      
+      // Update the local state
+      setEvents(prevEvents =>
+        prevEvents.map(event =>
+          event.id === eventId ? { ...event, status: newStatus } : event
+        )
+      );
+      
       toast({
         title: "Success",
         description: `Event ${newStatus.toLowerCase()} successfully`,
+        variant: "default",
       });
     } catch (error) {
+      console.error('Error updating event status:', error);
       toast({
         title: "Error",
-        description: "Failed to update event status",
+        description: `Failed to ${newStatus.toLowerCase()} event. Please try again.`,
         variant: "destructive",
       });
+    } finally {
+      setUpdatingEventId(null);
     }
+  };
+
+  const handleApprove = (eventId: number) => {
+    updateEventStatus(eventId, 'Approved');
+  };
+
+  const handleDeny = (eventId: number) => {
+    updateEventStatus(eventId, 'Denied');
   };
 
   const exportEventsToCSV = (eventsToExport: Event[], filename: string) => {
@@ -377,18 +395,23 @@ const AdminDashboard = () => {
                         {event.status.toLowerCase() !== 'approved' && (
                           <Button
                             size="sm"
-                            onClick={() => updateEventStatus(event.id, 'Approved')}
+                            onClick={() => handleApprove(event.id)}
+                            disabled={updatingEventId === event.id}
+                            className="bg-green-600 hover:bg-green-700 text-white"
                           >
-                            Approve
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            {updatingEventId === event.id ? 'Approving...' : 'Approve'}
                           </Button>
                         )}
                         {event.status.toLowerCase() !== 'denied' && (
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => updateEventStatus(event.id, 'Denied')}
+                            onClick={() => handleDeny(event.id)}
+                            disabled={updatingEventId === event.id}
                           >
-                            Deny
+                            <XCircle className="w-4 h-4 mr-1" />
+                            {updatingEventId === event.id ? 'Denying...' : 'Deny'}
                           </Button>
                         )}
                       </div>
