@@ -21,7 +21,6 @@ const AdminDashboard = () => {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [updatingEventId, setUpdatingEventId] = useState<number | null>(null);
   const { user, logout } = useAuth();
   const { toast } = useToast();
 
@@ -37,22 +36,13 @@ const AdminDashboard = () => {
   useEffect(() => {
     let filtered = events;
 
-    console.log('Admin Department:', adminDepartment);
-    console.log('Can View All Events:', canViewAllEvents);
-    console.log('User Email:', userEmail);
-
-    // Filter by department access first
     if (!canViewAllEvents && adminDepartment) {
       filtered = filtered.filter(event => {
         const eventDept = event.department?.toLowerCase().trim() || '';
         const adminDept = adminDepartment.toLowerCase().trim();
         
-        console.log(`Comparing event dept: "${eventDept}" with admin dept: "${adminDept}"`);
-        
-        // Exact match
         if (eventDept === adminDept) return true;
         
-        // Check if admin department contains key words from event department
         if (adminDept.includes('accounting') && eventDept.includes('accounting')) return true;
         if (adminDept.includes('finance') && eventDept.includes('finance')) return true;
         if (adminDept.includes('civil') && eventDept.includes('civil')) return true;
@@ -97,7 +87,6 @@ const AdminDashboard = () => {
       const data = await apiService.getEvents();
       setEvents(data);
     } catch (error) {
-      console.error('Error fetching events:', error);
       toast({
         title: "Error",
         description: "Failed to fetch events",
@@ -109,55 +98,22 @@ const AdminDashboard = () => {
   };
 
   const updateEventStatus = async (eventId: number, newStatus: string) => {
-    console.log(`Attempting to update event ${eventId} to status: ${newStatus}`);
-    setUpdatingEventId(eventId);
-    
     try {
-      // Find the current event to log its current status
-      const currentEvent = events.find(e => e.id === eventId);
-      console.log('Current event status:', currentEvent?.status);
-      
-      const updatedEvent = await apiService.updateEvent(eventId, { status: newStatus });
-      console.log('Event updated successfully:', updatedEvent);
-      
-      // Update the local state immediately
-      setEvents(prevEvents =>
-        prevEvents.map(event =>
-          event.id === eventId ? { ...event, status: newStatus } : event
-        )
-      );
-      
+      await apiService.updateEvent(eventId, { status: newStatus });
+      setEvents(events.map(event =>
+        event.id === eventId ? { ...event, status: newStatus } : event
+      ));
       toast({
         title: "Success",
         description: `Event ${newStatus.toLowerCase()} successfully`,
-        variant: "default",
       });
-      
-      // Refresh events to ensure we have the latest data
-      await fetchEvents();
-      
     } catch (error) {
-      console.error('Error updating event status:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
       toast({
         title: "Error",
-        description: `Failed to ${newStatus.toLowerCase()} event: ${errorMessage}`,
+        description: "Failed to update event status",
         variant: "destructive",
       });
-    } finally {
-      setUpdatingEventId(null);
     }
-  };
-
-  const handleApprove = async (eventId: number) => {
-    console.log('Approving event:', eventId);
-    await updateEventStatus(eventId, 'Approved');
-  };
-
-  const handleDeny = async (eventId: number) => {
-    console.log('Denying event:', eventId);
-    await updateEventStatus(eventId, 'Denied');
   };
 
   const exportEventsToCSV = (eventsToExport: Event[], filename: string) => {
@@ -256,7 +212,6 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <div className="container mx-auto py-8 px-4">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
@@ -267,9 +222,6 @@ const AdminDashboard = () => {
               <div className="mt-2 space-y-1">
                 <p className="text-sm text-blue-600">
                   Viewing events for: {adminDepartment}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Debug: Found {filteredEvents.length} events for your department
                 </p>
               </div>
             )}
@@ -288,24 +240,6 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Debug Information for Department Admins */}
-        {!canViewAllEvents && adminDepartment && (
-          <Card className="mb-6 bg-yellow-50 border-yellow-200">
-            <CardHeader>
-              <CardTitle className="text-yellow-800">Debug Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm space-y-2">
-                <p><strong>Your Department:</strong> {adminDepartment}</p>
-                <p><strong>Total Events in System:</strong> {events.length}</p>
-                <p><strong>Events for Your Department:</strong> {filteredEvents.length}</p>
-                <p><strong>All Event Departments:</strong> {Array.from(new Set(events.map(e => e.department))).join(', ')}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Filters */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Filters</CardTitle>
@@ -355,7 +289,6 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Events Table */}
         <Card>
           <CardHeader>
             <CardTitle>Events ({filteredEvents.length})</CardTitle>
@@ -407,23 +340,21 @@ const AdminDashboard = () => {
                         {event.status.toLowerCase() !== 'approved' && (
                           <Button
                             size="sm"
-                            onClick={() => handleApprove(event.id)}
-                            disabled={updatingEventId === event.id}
+                            onClick={() => updateEventStatus(event.id, 'Approved')}
                             className="bg-green-600 hover:bg-green-700 text-white"
                           >
                             <CheckCircle className="w-4 h-4 mr-1" />
-                            {updatingEventId === event.id ? 'Approving...' : 'Approve'}
+                            Approve
                           </Button>
                         )}
                         {event.status.toLowerCase() !== 'denied' && (
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => handleDeny(event.id)}
-                            disabled={updatingEventId === event.id}
+                            onClick={() => updateEventStatus(event.id, 'Denied')}
                           >
                             <XCircle className="w-4 h-4 mr-1" />
-                            {updatingEventId === event.id ? 'Denying...' : 'Deny'}
+                            Deny
                           </Button>
                         )}
                       </div>

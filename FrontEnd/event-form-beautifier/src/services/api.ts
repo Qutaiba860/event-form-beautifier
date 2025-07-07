@@ -32,6 +32,7 @@ export interface Event {
   creator?: {
     email: string;
   };
+  target_audience: string;
 }
 
 export interface Budget {
@@ -151,30 +152,13 @@ class ApiService {
   }
 
   async updateEvent(id: number, eventData: Partial<Event>): Promise<Event> {
-    console.log(`Updating event ${id} with data:`, eventData);
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
-        method: "PATCH", // Changed from PUT to PATCH for partial updates
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(eventData),
-      });
-      
-      console.log('Update response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Update failed:', errorText);
-        throw new Error(`Failed to update event: ${response.status} - ${errorText}`);
-      }
-      
-      const result = await response.json();
-      console.log('Event updated successfully:', result);
-      return result;
-    } catch (error) {
-      console.error('Error in updateEvent:', error);
-      throw error;
-    }
+    const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
+      method: "PUT",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(eventData),
+    });
+    if (!response.ok) throw new Error("Failed to update event");
+    return response.json();
   }
 
   async getBudgets(eventId?: number): Promise<Budget[]> {
@@ -243,45 +227,13 @@ class ApiService {
   }
 
   async createDocument(documentData: Partial<Document>): Promise<Document> {
-    console.log("API: Creating document with data:", documentData);
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/documents/`, {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(documentData),
-      });
-      
-      console.log("API: Document creation response status:", response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API: Document creation failed:", response.status, errorText);
-        
-        let errorMessage = `Failed to create document (${response.status})`;
-        try {
-          const errorJson = JSON.parse(errorText);
-          if (errorJson.detail) {
-            errorMessage = errorJson.detail;
-          } else if (errorJson.error) {
-            errorMessage = errorJson.error;
-          }
-        } catch (e) {
-          if (errorText) {
-            errorMessage = errorText;
-          }
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      const result = await response.json();
-      console.log("API: Document created successfully:", result);
-      return result;
-    } catch (error) {
-      console.error("API: Error in createDocument:", error);
-      throw error;
-    }
+    const response = await fetch(`${API_BASE_URL}/api/documents/`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(documentData),
+    });
+    if (!response.ok) throw new Error("Failed to create document");
+    return response.json();
   }
 
   async deleteDocument(id: number): Promise<void> {
@@ -289,11 +241,7 @@ class ApiService {
       method: "DELETE",
       headers: this.getAuthHeaders(),
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Failed to delete document:", response.status, errorText);
-      throw new Error(`Failed to delete document: ${response.status}`);
-    }
+    if (!response.ok) throw new Error("Failed to delete document");
   }
 
   async getUsers(): Promise<User[]> {

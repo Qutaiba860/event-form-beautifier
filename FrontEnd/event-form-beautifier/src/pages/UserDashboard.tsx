@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService, Event } from '@/services/api';
@@ -25,6 +24,12 @@ const UserDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const privilegedEmails = [
+    "2023005883@aurak.ac.ae",
+    "Imad.hoballah@aurak.ac.ae",
+    "qutaiba.raid@gmail.com"
+  ];
+
   useEffect(() => {
     fetchUserEvents();
   }, []);
@@ -49,14 +54,12 @@ const UserDashboard = () => {
   const fetchUserEvents = async () => {
     try {
       const data = await apiService.getEvents();
-      // Filter events created by the current user
+      const currentEmail = user?.email || "";
       const userEvents = data.filter(event => 
-        event.creator?.email === user?.email
+        privilegedEmails.includes(currentEmail) || event.creator?.email === currentEmail
       );
-      console.log('User events:', userEvents);
       setEvents(userEvents);
     } catch (error) {
-      console.error('Error fetching user events:', error);
       toast({
         title: "Error",
         description: "Failed to fetch your events",
@@ -110,7 +113,6 @@ const UserDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-indigo-50">
       <div className="container mx-auto py-8 px-4">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -127,7 +129,6 @@ const UserDashboard = () => {
           </div>
         </div>
 
-        {/* Status Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="bg-green-50 border-green-200">
             <CardHeader className="pb-2">
@@ -172,7 +173,6 @@ const UserDashboard = () => {
           </Card>
         </div>
 
-        {/* Filters */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Filter Your Events</CardTitle>
@@ -206,7 +206,6 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Events List */}
         {filteredEvents.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
