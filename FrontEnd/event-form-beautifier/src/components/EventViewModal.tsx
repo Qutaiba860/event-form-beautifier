@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Users, Clock, Camera, FileText, X, Download, Eye } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { apiService } from '@/services/api'; // assuming it's the same used in EventDetails
-
+import { apiService } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
 
 type Media = {
   id: number;
@@ -30,55 +30,129 @@ interface EventViewModalProps {
 }
 
 const EventViewModal: React.FC<EventViewModalProps> = ({ event, isOpen, onClose }) => {
+  const { toast } = useToast();
+  
+  const [mediaFiles, setMediaFiles] = useState<Media[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
 
-const [mediaFiles, setMediaFiles] = useState<Media[]>([]);
-const [documents, setDocuments] = useState<Document[]>([]);
+  useEffect(() => {
+    const fetchAttachments = async () => {
+      if (!event?.id) return;
 
-useEffect(() => {
-  const fetchAttachments = async () => {
-    if (!event?.id) return;
+      try {
+        const media = await apiService.getMedia(event.id);
+        const parsedMedia = media.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          type: m.media_type?.startsWith('image') ? 'image' : 'video',
+          url: m.file,
+        }));
+        setMediaFiles(parsedMedia);
 
+        const docs = await apiService.getDocuments(event.id);
+        const parsedDocs = docs.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          type: getDocumentType(d.type),
+          url: d.url,
+          size: formatFileSize(d.size),
+        }));
+        setDocuments(parsedDocs);
+      } catch (err) {
+        console.error("Failed to load media/documents for admin view", err);
+      }
+    };
+
+    fetchAttachments();
+  }, [event?.id]);
+  const getDocumentType = (mimeType: string): Document["type"] => {
+    if (mimeType.includes("pdf")) return "pdf";
+    if (mimeType.includes("word")) return "word";
+    if (mimeType.includes("excel") || mimeType.includes("sheet")) return "excel";
+    if (mimeType.includes("powerpoint") || mimeType.includes("presentation")) return "powerpoint";
+    return "text";
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (!bytes) return "0 Bytes";
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+  };
+
+  const handleDocumentDownload = async (doc: Document) => {
     try {
-      const media = await apiService.getMedia(event.id);
-      const parsedMedia = media.map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        type: m.media_type?.startsWith('image') ? 'image' : 'video',
-        url: m.file,
-      }));
-      setMediaFiles(parsedMedia);
+      const response = await fetch(doc.url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
 
-      const docs = await apiService.getDocuments(event.id);
-      const parsedDocs = docs.map((d: any) => ({
-        id: d.id,
-        name: d.name,
-        type: getDocumentType(d.type),
-        url: d.url,
-        size: formatFileSize(d.size),
-      }));
-      setDocuments(parsedDocs);
-    } catch (err) {
-      console.error("Failed to load media/documents for admin view", err);
+      if (!response.ok) {
+        throw new Error('Failed to download document');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Download Started",
+        description: `${doc.name} is being downloaded.`,
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "Could not download the document. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  fetchAttachments();
-}, [event?.id]);
-const getDocumentType = (mimeType: string): Document["type"] => {
-  if (mimeType.includes("pdf")) return "pdf";
-  if (mimeType.includes("word")) return "word";
-  if (mimeType.includes("excel") || mimeType.includes("sheet")) return "excel";
-  if (mimeType.includes("powerpoint") || mimeType.includes("presentation")) return "powerpoint";
-  return "text";
-};
+  const handleMediaDownload = async (media: Media) => {
+    try {
+      const response = await fetch(media.url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
 
-const formatFileSize = (bytes: number): string => {
-  if (!bytes) return "0 Bytes";
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
-};
+      if (!response.ok) {
+        throw new Error('Failed to download media');
+      }
 
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = media.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Download Started", 
+        description: `${media.name} is being downloaded.`,
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "Could not download the media file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getDocumentIcon = (type: string) => {
     switch (type) {
@@ -167,11 +241,9 @@ const formatFileSize = (bytes: number): string => {
                           <Button size="sm" variant="outline" onClick={() => window.open(media.url)}>
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <a href={media.url} download target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="outline">
-                              <Download className="w-4 h-4" />
-                            </Button>
-                          </a>
+                          <Button size="sm" variant="outline" onClick={() => handleMediaDownload(media)}>
+                            <Download className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -209,11 +281,9 @@ const formatFileSize = (bytes: number): string => {
                           <Button size="sm" variant="outline" onClick={() => window.open(doc.url)}>
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <a href={doc.url} download target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="outline">
-                              <Download className="w-4 h-4" />
-                            </Button>
-                          </a>
+                          <Button size="sm" variant="outline" onClick={() => handleDocumentDownload(doc)}>
+                            <Download className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
