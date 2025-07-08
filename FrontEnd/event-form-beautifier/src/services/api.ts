@@ -1,3 +1,4 @@
+
 import { API_BASE_URL } from "@/config";
 
 export interface User {
@@ -302,15 +303,20 @@ class ApiService {
   }
 
   async downloadDocument(id: number): Promise<Response> {
-    const response = await fetch(`${API_BASE_URL}/api/documents/${id}/download/`, {
+    const token = localStorage.getItem("access_token");
+    
+    // Try the direct document URL first, then fallback to download endpoint
+    const response = await fetch(`${API_BASE_URL}/api/documents/${id}/`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Authorization': `Bearer ${token}`,
+        'Accept': '*/*',
       },
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      console.error("Document download error:", response.status, response.statusText);
+      throw new Error(`Failed to download document: ${response.status} ${response.statusText}`);
     }
 
     return response;

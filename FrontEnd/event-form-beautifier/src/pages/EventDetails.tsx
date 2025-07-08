@@ -235,8 +235,30 @@ const getDocumentIcon = (mimeType: string) => {
 
   const handleDocumentDownload = async (document: Document) => {
     try {
-      // Use the API service to download the document with proper authentication
-      const response = await apiService.downloadDocument(document.id);
+      console.log("Attempting to download document:", document);
+      
+      // Try using the API service first
+      let response;
+      try {
+        response = await apiService.downloadDocument(document.id);
+      } catch (apiError) {
+        console.log("API service failed, trying direct URL:", apiError);
+        
+        // Fallback: try direct URL access with authentication
+        const token = localStorage.getItem('access_token');
+        const directUrl = document.url.startsWith('http') ? document.url : `${API_BASE_URL}${document.url}`;
+        
+        response = await fetch(directUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Direct download failed: ${response.status}`);
+        }
+      }
       
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -261,7 +283,7 @@ const getDocumentIcon = (mimeType: string) => {
       console.error('Download error:', error);
       toast({
         title: "Download Failed",
-        description: `Could not download ${document.name}. Please try again.`,
+        description: `Could not download ${document.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
