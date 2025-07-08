@@ -300,6 +300,21 @@ class ApiService {
     if (!response.ok) throw new Error("Unauthorized");
     return await response.json();
   }
+
+  async downloadDocument(id: number): Promise<Response> {
+    const response = await fetch(`${API_BASE_URL}/api/documents/${id}/download/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return response;
+  }
 }
 
 export const apiService = new ApiService();

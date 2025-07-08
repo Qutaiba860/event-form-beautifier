@@ -235,22 +235,9 @@ const getDocumentIcon = (mimeType: string) => {
 
   const handleDocumentDownload = async (document: Document) => {
     try {
-      // Use the API base URL to construct the full download URL
-      const downloadUrl = document.url.startsWith('http') 
-        ? document.url 
-        : `${document.url}`;
-
-      const response = await fetch(downloadUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
+      // Use the API service to download the document with proper authentication
+      const response = await apiService.downloadDocument(document.id);
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
