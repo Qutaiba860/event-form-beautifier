@@ -4,9 +4,10 @@ import { apiService, User } from '@/services/api';
 interface AuthContextType {
   user: Partial<User> | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
   isAuthenticated: boolean;
+  login: (email: string) => Promise<void>;
+  verifyOtpAndSetUser: (email: string, otp: string) => Promise<void>;
+  logout: () => void;
   setUser: (user: Partial<User> | null) => void;
 }
 
@@ -29,24 +30,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      apiService.getCurrentUser()
-        .then(setUser)
-        .catch(() => {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-        })
-        .finally(() => setIsLoading(false));
-    } else {
+    const token = localStorage.getItem("access_token");
+
+    const bootstrap = async () => {
+      if (token) {
+        try {
+          const freshUser = await apiService.getCurrentUser();  // e.g., /api/auth/me/
+          setUser(freshUser);
+          // optional: store it again
+          localStorage.setItem("current_user", JSON.stringify(freshUser));
+        } catch (error) {
+          console.error("❌ Token invalid or expired. Logging out.");
+          logout();
+        }
+      } else {
+        logout(); // ⛔ No token? Force logout
+      }
+
       setIsLoading(false);
-    }
+    };
+
+    bootstrap();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    await apiService.login(email, password);
-    const userData = await apiService.getCurrentUser();
-    setUser(userData);
+  const login = async (email: string) => {
+    await apiService.loginWithEmail(email); // just sends OTP
+  };
+
+  const verifyOtpAndSetUser = async (email: string, otp: string) => {
+    const userData = await apiService.verifyOTP(email, otp); // stores token + user
+    if (userData && !('detail' in userData)) {
+      setUser(userData);
+    } else {
+      setUser(null);
+      // Optionally, handle error here (e.g., show a message)
+      console.error("OTP verification failed:", userData?.detail);
+    }
   };
 
   const logout = () => {
@@ -54,12 +73,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     isLoading,
-    login,
-    logout,
     isAuthenticated: !!user,
+    login,
+    verifyOtpAndSetUser,
+    logout,
     setUser
   };
 

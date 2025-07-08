@@ -9,6 +9,15 @@ export interface User {
   phone: string;
 }
 
+export interface Document {
+  id: number;
+  name: string;
+  type: string;
+  url: string;
+  size: number;
+  event: number;
+}
+
 export interface Event {
   id: number;
   name: string;
@@ -47,23 +56,13 @@ export interface Budget {
 
 export interface Media {
   id: number;
-  url: string;
+  url: string;       // for your frontend logic
+  file: string;      // actual backend field from Django (FileField)
   media_type: string;
   name: string;
   uploaded_by: number;
   event: number;
   size: number;
-}
-
-export interface Document {
-  id: number;
-  name: string;
-  type: string;
-  url: string;
-  size: number;
-  uploaded_by: number;
-  event?: number;
-  created_at: string;
 }
 
 class ApiService {
@@ -75,7 +74,7 @@ class ApiService {
     };
   }
 
-  async loginWithEmail(email: string): Promise<any> {
+  async loginWithEmail(email: string): Promise<{ detail: string }> {
     const response = await fetch(`${API_BASE_URL}/api/auth/otp/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -86,7 +85,7 @@ class ApiService {
     return response.json();
   }
 
-  async verifyOTP(email: string, otp: string): Promise<any> {
+  async verifyOTP(email: string, otp: string): Promise<{detail: string}> {
     const response = await fetch(`${API_BASE_URL}/api/auth/otp/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -153,7 +152,7 @@ class ApiService {
 
   async updateEvent(id: number, eventData: Partial<Event>): Promise<Event> {
     const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
-      method: "PATCH",
+      method: "PATCH",  // Changed from PUT to PATCH for partial updates
       headers: this.getAuthHeaders(),
       body: JSON.stringify(eventData),
     });
@@ -165,6 +164,57 @@ class ApiService {
     }
     
     return response.json();
+  }
+
+  async approveEvent(id: number): Promise<Event> {
+    return this.updateEvent(id, { status: 'approved' });
+  }
+
+  async rejectEvent(id: number): Promise<Event> {
+    return this.updateEvent(id, { status: 'rejected' });
+  }
+
+  async uploadDocument(formData: FormData): Promise<Document> {
+    const token = localStorage.getItem("access_token");
+
+    const response = await fetch(`${API_BASE_URL}/api/documents/`, {
+      method: "POST",
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+        // Let the browser set Content-Type for FormData
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error("📄 Document Upload Error:", error);
+      throw new Error(error.detail || "Failed to upload document");
+    }
+
+    return await response.json();
+  }
+
+  async getDocuments(eventId?: number): Promise<Document[]> {
+    const url = eventId
+      ? `${API_BASE_URL}/api/documents/?event=${eventId}`
+      : `${API_BASE_URL}/api/documents/`;
+
+    const response = await fetch(url, {
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) throw new Error("Failed to fetch documents");
+    return await response.json();
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/documents/${id}/`, {
+      method: "DELETE",
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) throw new Error("Failed to delete document");
   }
 
   async getBudgets(eventId?: number): Promise<Budget[]> {
@@ -198,56 +248,36 @@ class ApiService {
     if (!response.ok) throw new Error("Failed to fetch media");
     return response.json();
   }
-
-  async createMedia(mediaData: Partial<Media>): Promise<Media> {
-    const response = await fetch(`${API_BASE_URL}/api/media/`, {
-      method: "POST",
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(mediaData),
-    });
-    if (!response.ok) throw new Error("Failed to create media");
-    return response.json();
-  }
-
+  
   async deleteMedia(id: number): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/api/media/${id}/`, {
       method: "DELETE",
       headers: this.getAuthHeaders(),
     });
-    if (!response.ok) throw new Error("Failed to delete media");
-  }
 
-  async getDocuments(eventId?: number): Promise<Document[]> {
-    const url = eventId
-      ? `${API_BASE_URL}/api/documents/?event=${eventId}`
-      : `${API_BASE_URL}/api/documents/`;
-    const response = await fetch(url, {
-      headers: this.getAuthHeaders(),
-    });
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Failed to fetch documents:", response.status, errorText);
-      throw new Error(`Failed to fetch documents: ${response.status}`);
+      throw new Error("Failed to delete media");
     }
-    return response.json();
   }
 
-  async createDocument(documentData: Partial<Document>): Promise<Document> {
-    const response = await fetch(`${API_BASE_URL}/api/documents/`, {
+  async uploadMedia(formData: FormData): Promise<Media> {
+    const token = localStorage.getItem("access_token");
+
+    const response = await fetch(`${API_BASE_URL}/api/media/`, {
       method: "POST",
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(documentData),
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+        // No Content-Type! Let browser handle it for FormData
+      },
+      body: formData,
     });
-    if (!response.ok) throw new Error("Failed to create document");
-    return response.json();
-  }
 
-  async deleteDocument(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/documents/${id}/`, {
-      method: "DELETE",
-      headers: this.getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to delete document");
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to upload media");
+    }
+
+    return await response.json();
   }
 
   async getUsers(): Promise<User[]> {
@@ -259,11 +289,16 @@ class ApiService {
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/user/`, {
-      headers: this.getAuthHeaders(),
+    const token = localStorage.getItem("access_token");
+    const response = await fetch(`${API_BASE_URL}/api/auth/me/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
-    if (!response.ok) throw new Error("Failed to fetch current user");
-    return response.json();
+
+    if (!response.ok) throw new Error("Unauthorized");
+    return await response.json();
   }
 }
 

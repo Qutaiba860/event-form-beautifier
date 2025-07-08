@@ -4,6 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Users, Clock, Camera, FileText, X, Download, Eye } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { apiService } from '@/services/api'; // assuming it's the same used in EventDetails
+
 
 type Media = {
   id: number;
@@ -27,18 +30,55 @@ interface EventViewModalProps {
 }
 
 const EventViewModal: React.FC<EventViewModalProps> = ({ event, isOpen, onClose }) => {
-  // Mock data for demonstration - in real app this would come from API
-  const mockMedia: Media[] = [
-    { id: 1, name: 'event_photo_1.jpg', type: 'image', url: '/placeholder.svg' },
-    { id: 2, name: 'event_video_1.mp4', type: 'video', url: '/placeholder.svg' },
-    { id: 3, name: 'event_photo_2.jpg', type: 'image', url: '/placeholder.svg' },
-  ];
 
-  const mockDocuments: Document[] = [
-    { id: 1, name: 'Event_Proposal.pdf', type: 'pdf', url: '/placeholder.svg', size: '2.5 MB' },
-    { id: 2, name: 'Budget_Breakdown.xlsx', type: 'excel', url: '/placeholder.svg', size: '1.2 MB' },
-    { id: 3, name: 'Presentation.pptx', type: 'powerpoint', url: '/placeholder.svg', size: '5.8 MB' },
-  ];
+const [mediaFiles, setMediaFiles] = useState<Media[]>([]);
+const [documents, setDocuments] = useState<Document[]>([]);
+
+useEffect(() => {
+  const fetchAttachments = async () => {
+    if (!event?.id) return;
+
+    try {
+      const media = await apiService.getMedia(event.id);
+      const parsedMedia = media.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        type: m.media_type?.startsWith('image') ? 'image' : 'video',
+        url: m.file,
+      }));
+      setMediaFiles(parsedMedia);
+
+      const docs = await apiService.getDocuments(event.id);
+      const parsedDocs = docs.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        type: getDocumentType(d.type),
+        url: d.url,
+        size: formatFileSize(d.size),
+      }));
+      setDocuments(parsedDocs);
+    } catch (err) {
+      console.error("Failed to load media/documents for admin view", err);
+    }
+  };
+
+  fetchAttachments();
+}, [event?.id]);
+const getDocumentType = (mimeType: string): Document["type"] => {
+  if (mimeType.includes("pdf")) return "pdf";
+  if (mimeType.includes("word")) return "word";
+  if (mimeType.includes("excel") || mimeType.includes("sheet")) return "excel";
+  if (mimeType.includes("powerpoint") || mimeType.includes("presentation")) return "powerpoint";
+  return "text";
+};
+
+const formatFileSize = (bytes: number): string => {
+  if (!bytes) return "0 Bytes";
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+};
+
 
   const getDocumentIcon = (type: string) => {
     switch (type) {
@@ -113,11 +153,11 @@ const EventViewModal: React.FC<EventViewModalProps> = ({ event, isOpen, onClose 
               <CardDescription className="text-blue-100">Photos and videos from the event</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              {mockMedia.length > 0 ? (
+              {mediaFiles.length > 0 ? (
                 <div className="space-y-2">
-                  <h4 className="font-medium text-gray-700">Media Files ({mockMedia.length}):</h4>
+                  <h4 className="font-medium text-gray-700">Media Files ({mediaFiles.length}):</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {mockMedia.map((media) => (
+                    {mediaFiles.map((media) => (
                       <div key={media.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
                         <div className="flex items-center gap-2">
                           {media.type === 'image' ? <Camera className="w-4 h-4 text-blue-600" /> : <FileText className="w-4 h-4 text-purple-600" />}
@@ -127,9 +167,11 @@ const EventViewModal: React.FC<EventViewModalProps> = ({ event, isOpen, onClose 
                           <Button size="sm" variant="outline" onClick={() => window.open(media.url)}>
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button size="sm" variant="outline">
-                            <Download className="w-4 h-4" />
-                          </Button>
+                          <a href={media.url} download target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" variant="outline">
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </a>
                         </div>
                       </div>
                     ))}
@@ -150,11 +192,11 @@ const EventViewModal: React.FC<EventViewModalProps> = ({ event, isOpen, onClose 
               <CardDescription className="text-blue-100">Documentation and files related to the event</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              {mockDocuments.length > 0 ? (
+              {documents.length > 0 ? (
                 <div className="space-y-2">
-                  <h4 className="font-medium text-gray-700">Document Files ({mockDocuments.length}):</h4>
+                  <h4 className="font-medium text-gray-700">Document Files ({documents.length}):</h4>
                   <div className="space-y-2">
-                    {mockDocuments.map((doc) => (
+                    {documents.map((doc) => (
                       <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{getDocumentIcon(doc.type)}</span>
@@ -167,9 +209,11 @@ const EventViewModal: React.FC<EventViewModalProps> = ({ event, isOpen, onClose 
                           <Button size="sm" variant="outline" onClick={() => window.open(doc.url)}>
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button size="sm" variant="outline">
-                            <Download className="w-4 h-4" />
-                          </Button>
+                          <a href={doc.url} download target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" variant="outline">
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </a>
                         </div>
                       </div>
                     ))}

@@ -1,26 +1,31 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { apiService, Document } from '@/services/api';
+import { apiService } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   Calendar, MapPin, Users, Clock, Upload, Camera,
   Scan, ArrowLeft, Download, Eye, Plus, X, FileText,
-  File, FileSpreadsheet, FileImage
+  FileSpreadsheet, FilePlus, FileArchive, FileSignature, FileCheck2
 } from 'lucide-react';
+
 
 type Media = {
   id: number;
   name: string;
-  media_type: string;
+  type: 'image' | 'video';
+  url: string;
+};
+
+type Document = {
+  id: number;
+  name: string;
+  type: string;
   url: string;
   size: number;
-  uploaded_by: number;
-  event: number;
 };
 
 type Event = {
@@ -52,201 +57,189 @@ const EventDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadedMedia, setUploadedMedia] = useState<Media[]>([]);
-  const [uploadedDocuments, setUploadedDocuments] = useState<Document[]>([]);
   const [eventData, setEventData] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [attendanceList, setAttendanceList] = useState<Array<{ id: string, name: string, timestamp: string }>>([]);
   const [scannerValue, setScannerValue] = useState('');
+  const [uploadedDocuments, setUploadedDocuments] = useState<Document[]>([]);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const fetchEvent = async () => {
-      try {
-        const event = await apiService.getEventById(id!);
-        setEventData(event);
-      } catch (error) {
-        console.error("Error fetching event:", error);
-        setEventData(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEvent();
-  }, [id]);
-
-  useEffect(() => {
-    fetchMedia();
-    fetchDocuments();
-  }, [id]);
-
-  const fetchMedia = async () => {
+useEffect(() => {
+  const fetchEvent = async () => {
     try {
-      const media = await apiService.getMedia(Number(id));
-      setUploadedMedia(media);
+      const event = await apiService.getEventById(id!);
+      setEventData(event);
+
+      // ✅ Fetch media
+      const media = await apiService.getMedia(event.id);
+      const parsedMedia = media.map((m: {
+        id: number;
+        name: string;
+        media_type: string;
+        file: string;
+      }) => ({
+        id: m.id,
+        name: m.name,
+        type: m.media_type.startsWith("image") ? "image" as const : "video" as const,
+        url: m.file,
+      }));
+      setUploadedMedia(parsedMedia);
+
+      // ✅ Fetch documents
+      const documents = await apiService.getDocuments(event.id);
+      const parsedDocs = documents.map((d: Document) => ({
+        id: d.id,
+        name: d.name,
+        type: d.type,
+        url: d.url,
+        size: d.size,
+      }));
+      setUploadedDocuments(parsedDocs);
+
     } catch (error) {
-      console.error("Error fetching media:", error);
+      console.error("Error loading event, media, or documents:", error);
+      toast({
+        title: "Load Failed",
+        description: "Failed to load event, media, or documents.",
+        variant: "destructive",
+      });
+      setEventData(null);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchDocuments = async () => {
-    try {
-      const documents = await apiService.getDocuments(Number(id));
-      setUploadedDocuments(documents);
-    } catch (error) {
-      console.error("Error fetching documents:", error);
-    }
-  };
+  fetchEvent();
+}, [id, toast]);
+
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      try {
-        const uploadPromises = Array.from(files).map(async (file) => {
-          const mediaData = {
-            name: file.name,
-            media_type: file.type,
-            url: URL.createObjectURL(file),
-            size: file.size,
-            uploaded_by: user?.id || 1,
-            event: Number(id)
-          };
-          
-          const savedMedia = await apiService.createMedia(mediaData);
-          return savedMedia;
-        });
+    if (!files || !eventData) return;
 
-        const savedMedia = await Promise.all(uploadPromises);
-        setUploadedMedia(prev => [...prev, ...savedMedia]);
-        
-        toast({
-          title: "Media Uploaded",
-          description: `${files.length} file(s) uploaded successfully.`
+    const uploadedItems: Media[] = [];
+
+    for (const file of Array.from(files)) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("event", String(eventData.id));
+
+      try {
+        const response = await apiService.uploadMedia(formData);
+        uploadedItems.push({
+          id: response.id,
+          name: response.name,
+          type: response.media_type.startsWith("image") ? "image" : "video",
+          url: response.file,  // Django returns full path to media file
         });
-      } catch (error) {
-        console.error("Media upload error:", error);
+      } catch (err: unknown) {
+        let message = "An error occurred while uploading.";
+        if (err instanceof Error) {
+          message = err.message;
+        }
         toast({
-          title: "Upload Error",
-          description: "Failed to upload media.",
-          variant: "destructive"
+          title: "Upload failed",
+          description: message,
+          variant: "destructive",
         });
       }
     }
+
+    setUploadedMedia(prev => [...prev, ...uploadedItems]);
+
+    toast({
+      title: "Media Uploaded",
+      description: `${uploadedItems.length} file(s) uploaded.`,
+    });
   };
 
+const handleRemoveMedia = async (id: number) => {
+  try {
+    await apiService.deleteMedia(id); // <-- actually call the backend
+    setUploadedMedia(prev => prev.filter(media => media.id !== id));
+    toast({ title: "Media Removed", description: "File removed successfully." });
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to delete media.",
+      variant: "destructive",
+    });
+  }
+};
+const getDocumentIcon = (mimeType: string) => {
+  if (mimeType.includes("pdf")) return <FileText className="w-5 h-5 text-red-500" />;
+  if (mimeType.includes("word")) return <FileText className="w-5 h-5 text-blue-600" />; // fallback
+  if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return <FileText className="w-5 h-5 text-green-600" />;
+  if (mimeType.includes("powerpoint") || mimeType.includes("presentation")) return <FileText className="w-5 h-5 text-orange-500" />;
+  if (mimeType.includes("csv")) return <FileText className="w-5 h-5 text-teal-600" />;  return <FileCheck2 className="w-5 h-5 text-gray-500" />;
+};
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files && files.length > 0) {
-      console.log("Starting document upload...", files.length, "files");
-      
-      try {
-        const uploadPromises = Array.from(files).map(async (file) => {
-          console.log("Uploading file:", file.name, "Size:", file.size, "Type:", file.type);
-          
-          // Create a more robust document data object
-          const documentData = {
-            name: file.name,
-            type: file.type || 'application/octet-stream',
-            size: file.size,
-            uploaded_by: user?.id || 1,
-            event: Number(id),
-            created_at: new Date().toISOString(),
-            // Create a temporary URL for now - in production you'd upload to a file storage service
-            url: `temp://document/${file.name}`
-          };
-          
-          console.log("Document data being sent:", documentData);
-          
-          // Try to create the document
-          const savedDocument = await apiService.createDocument(documentData);
-          console.log("Document saved successfully:", savedDocument);
-          
-          return savedDocument;
-        });
+    if (!files || !eventData) return;
 
-        const savedDocuments = await Promise.all(uploadPromises);
-        setUploadedDocuments(prev => [...prev, ...savedDocuments]);
-        
-        toast({
-          title: "Documents Uploaded",
-          description: `${files.length} document(s) uploaded successfully.`
-        });
-        
-        // Clear the file input
-        if (documentInputRef.current) {
-          documentInputRef.current.value = '';
+    const uploadedDocs: Document[] = [];
+
+    for (const file of Array.from(files)) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("event", String(eventData.id));
+
+      try {
+        const response = await apiService.uploadDocument(formData);
+          uploadedDocs.push({
+            id: response.id,
+            name: response.name,
+            type: response.type || file.type,     // ✅ Match your defined Document interface
+            url: response.url || '',              // ✅ Match your defined Document interface
+            size: response.size || file.size,
+          });
+      } catch (err: unknown) {
+        let message = "An error occurred while uploading.";
+        if (err instanceof Error) {
+          message = err.message;
         }
-      } catch (error) {
-        console.error("Document upload error:", error);
-        
-        // More detailed error message
-        let errorMessage = 'Unknown error occurred';
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === 'string') {
-          errorMessage = error;
-        }
-        
         toast({
-          title: "Upload Error",
-          description: `Failed to upload documents: ${errorMessage}`,
-          variant: "destructive"
+          title: "Upload failed",
+          description: message,
+          variant: "destructive",
         });
       }
     }
+
+    setUploadedDocuments(prev => [...prev, ...uploadedDocs]);
+
+    toast({
+      title: "Documents Uploaded",
+      description: `${uploadedDocs.length} file(s) uploaded.`,
+    });
   };
 
-  const handleRemoveMedia = async (mediaId: number) => {
-    try {
-      await apiService.deleteMedia(mediaId);
-      setUploadedMedia(prev => prev.filter(media => media.id !== mediaId));
-      toast({ title: "Media Removed", description: "File removed successfully." });
-    } catch (error) {
-      console.error("Error removing media:", error);
-      toast({
-        title: "Error",
-        description: "Failed to remove media.",
-        variant: "destructive"
-      });
-    }
-  };
+  const handleRemoveDocument = async (id: number) => {
+  try {
+    await apiService.deleteDocument(id);
+    setUploadedDocuments(prev => prev.filter(doc => doc.id !== id));
+    toast({ title: "Document Removed", description: "File removed successfully." });
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to delete document.",
+      variant: "destructive",
+    });
+  }
+};
 
-  const handleRemoveDocument = async (docId: number) => {
-    try {
-      await apiService.deleteDocument(docId);
-      setUploadedDocuments(prev => prev.filter(doc => doc.id !== docId));
-      toast({
-        title: "Document Removed",
-        description: "Document removed successfully."
-      });
-    } catch (error) {
-      console.error("Error removing document:", error);
-      toast({
-        title: "Error",
-        description: "Failed to remove document.",
-        variant: "destructive"
-      });
-    }
-  };
 
-  const getDocumentIcon = (type: string) => {
-    if (type.includes('pdf')) return <FileText className="w-4 h-4 text-red-500" />;
-    if (type.includes('excel') || type.includes('spreadsheet')) return <FileSpreadsheet className="w-4 h-4 text-green-500" />;
-    if (type.includes('word') || type.includes('document')) return <FileText className="w-4 h-4 text-blue-500" />;
-    if (type.includes('presentation') || type.includes('powerpoint')) return <FileImage className="w-4 h-4 text-orange-500" />;
-    return <File className="w-4 h-4 text-gray-500" />;
-  };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
 
   const handleScanAttendance = () => {
     if (scannerValue.trim()) {
@@ -293,7 +286,7 @@ const EventDetails = () => {
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (!eventData) return <div className="p-8 text-center text-red-500">Event not found.</div>;
 
-  const totalAttendees = (eventData.expected_students || 0) + (eventData.expected_faculty || 0) + (eventData.expected_community || 0) + (eventData.expected_others || 0);
+  const totalAttendees = eventData.expected_students + eventData.expected_faculty + eventData.expected_community + eventData.expected_others;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-100 py-8 px-4">
@@ -328,7 +321,6 @@ const EventDetails = () => {
           </CardContent>
         </Card>
 
-        {/* Event Media Card - Updated */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <CardTitle className="text-xl font-bold flex items-center">
@@ -348,34 +340,29 @@ const EventDetails = () => {
 
             {uploadedMedia.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-medium">Uploaded Files ({uploadedMedia.length}):</h4>
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {uploadedMedia.map((media) => (
-                    <div key={media.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                      <div className="flex items-center gap-3">
-                        {media.media_type.startsWith('image/') ? <Camera className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
-                        <div>
-                          <span className="text-sm font-medium truncate block max-w-xs">{media.name}</span>
-                          <span className="text-xs text-gray-500">{formatFileSize(media.size)}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" onClick={() => window.open(media.url)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleRemoveMedia(media.id)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
+                <h4 className="font-medium">Uploaded Files:</h4>
+                {uploadedMedia.map((media) => (
+                  <div key={media.id} className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex items-center gap-2">
+                      {media.type === 'image' ? <Camera className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                      <span className="text-sm truncate">{media.name}</span>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" onClick={() => window.open(media.url)}>
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleRemoveMedia(media.id)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Event Documents Card - Updated */}
+        {/* Event Documents Card - NEW */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <CardTitle className="text-xl font-bold flex items-center">
@@ -391,16 +378,16 @@ const EventDetails = () => {
               <Button onClick={() => documentInputRef.current?.click()} className="bg-red-600 hover:bg-red-700">
                 <Plus className="w-4 h-4 mr-2" /> Add Documents
               </Button>
-              <input 
-                ref={documentInputRef} 
-                type="file" 
-                multiple 
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" 
-                onChange={handleDocumentUpload} 
-                className="hidden" 
+              <input
+                ref={documentInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+                onChange={handleDocumentUpload}
+                className="hidden"
               />
             </div>
-
+ 
             {uploadedDocuments.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-medium">Uploaded Documents ({uploadedDocuments.length}):</h4>
@@ -415,9 +402,15 @@ const EventDetails = () => {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <Button size="sm" variant="outline" onClick={() => window.open(document.url)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
+                        <a
+                          href={document.url}
+                          download={document.name}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium border rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
                         <Button size="sm" variant="outline" onClick={() => handleRemoveDocument(document.id)}>
                           <X className="w-4 h-4" />
                         </Button>
@@ -429,7 +422,6 @@ const EventDetails = () => {
             )}
           </CardContent>
         </Card>
-
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <div className="flex items-center justify-between">

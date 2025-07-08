@@ -14,7 +14,7 @@ const VerifyOTP = () => {
   const [isLoading, setIsLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast } = useToast(); 
   const { setUser } = useAuth();
 
   const email = location.state?.email || '';
@@ -43,11 +43,19 @@ const VerifyOTP = () => {
       if (!response.ok) throw new Error("OTP verification failed");
 
       const data = await response.json();
+      console.log("🔐 OTP Login Response:", data);
 
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
+      localStorage.setItem("current_user", JSON.stringify(data.user));
       setUser(data.user);
-
+      setTimeout(() => {
+        if (isPrivilegedUser(email) || isDepartmentAdmin(email) || isUltimateAdmin(email)) {
+          navigate("/admin-dashboard");
+        } else {
+          navigate("/dashboard");
+        }
+      }, 200);
       toast({
         title: "Success!",
         description: "You have been successfully logged in.",

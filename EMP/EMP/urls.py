@@ -21,7 +21,8 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [  # Include the events app URLs
     path('admin/', admin.site.urls),
@@ -35,3 +36,4 @@ urlpatterns = [  # Include the events app URLs
     # path('api/auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/', include('authentication.urls')),
 ]
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

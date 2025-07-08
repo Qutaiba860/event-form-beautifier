@@ -10,7 +10,8 @@ from users.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from django.conf import settings
-
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 # Simulated OTP store
 OTP_STORE = {}
 
@@ -69,9 +70,25 @@ class OTPLoginView(APIView):
                     "department": profile.department if profile else "",
                     "phone": profile.phone if profile else "",
                 }
-            }, status=status.HTTP_200_OK)
+            }, status=status.HTTP_200_OK) 
 
         except Exception as e:
             print("❌ ERROR OCCURRED:", str(e))
             traceback.print_exc()  # ⬅️ show full stack trace
             return Response({"detail": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_current_user(request):
+    user = request.user
+    profile = getattr(user, "userprofile", None)
+
+    return Response({
+        "id": user.id,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "department": profile.department if profile else "",
+        "phone": profile.phone if profile else "",
+    })

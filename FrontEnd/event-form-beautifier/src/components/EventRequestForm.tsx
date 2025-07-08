@@ -11,7 +11,10 @@ import {
   Building2,
 } from "lucide-react";
 import { API_BASE_URL } from "@/config";
+import { departmentAdmins } from "@/utils/userUtils";  // adjust path as needed
 
+const normalizeDepartment = (dept: string): string =>
+  dept.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
 export default function EventRequestForm() {
   const [needsBudget, setNeedsBudget] = useState(false);
   const [items, setItems] = useState([
@@ -117,6 +120,35 @@ export default function EventRequestForm() {
       const eventData = await apiService.createEvent(payload);
       const eventId = eventData.id;
       console.log("✅ Event created:", eventData);
+      const normalizedDept = normalizeDepartment(department);
+      console.log("🔍 Raw selected department:", department);
+      console.log("✅ Normalized selected department:", normalizedDept);
+      console.log("📬 All normalized department entries:");
+      Object.entries(departmentAdmins).forEach(([email, dept]) => {
+        console.log(` → ${email} → ${normalizeDepartment(dept)}`);
+      });
+      const chairEmail = Object.entries(departmentAdmins).find(
+        ([, dept]) => normalizeDepartment(dept) === normalizedDept
+      )?.[0];
+      console.log("📣 Trying to notify chair of:", department, "Resolved email:", chairEmail);
+      if (chairEmail) {
+        try {
+          await fetch(`${API_BASE_URL}/api/notify-chair/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: chairEmail,
+              eventName: eventName,
+              department,
+              submittedBy: fullName,
+              submittedEmail: email,
+            }),
+          });
+          console.log("📧 Notification sent to:", chairEmail);
+        } catch (notifyErr) {
+          console.error("❌ Failed to notify chair:", notifyErr);
+        }
+      }
 
       for (const item of items) {
         if (
@@ -162,7 +194,7 @@ export default function EventRequestForm() {
     setItems(updatedItems);
   };
 
- const goalOptions = [
+  const goalOptions = [
   "Connect students with potential employers through career-oriented opportunities",
   "Encourage knowledge sharing and expert dialogue on relevant topics",
   "Facilitate student employment opportunities and industry exposure",
@@ -297,7 +329,7 @@ export default function EventRequestForm() {
                     "Department of Biotechnology",
                     "Department of Humanities and Social Sciences",
                     "Department of Mathematics and Physics",
-                    "Department of Accounting & Finance",
+                    "Department of Accounting and Finance",
                     "Department of Management",
                   ].map((dept) => (
                     <option key={dept} value={dept}>
@@ -537,6 +569,7 @@ export default function EventRequestForm() {
               </div>
             </div>
           </div>
+
           {/* Event Classification Section */}
           <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
             <div className="flex items-center gap-3 mb-6">

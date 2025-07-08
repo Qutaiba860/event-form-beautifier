@@ -1,14 +1,17 @@
 
 export const privilegedEmails = [
   "2023005883@aurak.ac.ae",
-  "Imad.hoballah@aurak.ac.ae", 
+  "Imad.hoballah@aurak.ac.ae",
   "qutaiba.raid@gmail.com",
-  "admin@aurak.ac.ae"
+  "admin@aurak.ac.ae",
+  "Imadhoballah@gmail.com",
+
 ];
 
 export const normalUserEmails = [
   "lm1006500@gmail.com",
-  "nadojij156@dxirl.com"
+  "ganajad412@iridales.com",
+  
 ];
 
 // Department-specific admin mappings
@@ -23,13 +26,15 @@ export const departmentAdmins = {
   "alexandria.proff@aurak.ac.ae": "Department of Humanities and Social Sciences",
   "hamid.berriche@aurak.ac.ae": "Department of Mathematics and physics",
   "abdelfatah.arman@aurak.ac.ae": "Department of Management",
-  "dowilam762@fuasha.com": "Department of Accounting and Finance"
+  // "hazimabukallub@gmail.com": "Department of Accounting and Finance"
 };
 
 // Ultimate authority admins who can view all events
 export const ultimateAdmins = [
   "student.life@aurak.ac.ae",
-  "qutaiba.raid@gmail.com"
+  "qutaiba.raid@gmail.com",
+  "hazimabukallub@gmail.com"
+
 ];
 
 export const isPrivilegedUser = (email: string): boolean => {

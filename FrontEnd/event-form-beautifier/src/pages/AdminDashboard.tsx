@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import EventViewModal from '@/components/EventViewModal';
-import { Filter, Users, Calendar, Download, Eye, CheckCircle, XCircle } from 'lucide-react';
+import { Filter, Users, Calendar, Download, Eye } from 'lucide-react';
 import { getDepartmentForAdmin, isUltimateAdmin, getUserRole } from '@/utils/userUtils';
 
 const AdminDashboard = () => {
@@ -36,13 +36,25 @@ const AdminDashboard = () => {
   useEffect(() => {
     let filtered = events;
 
+    // Debug information
+    console.log('Admin Department:', adminDepartment);
+    console.log('Can View All Events:', canViewAllEvents);
+    console.log('User Email:', userEmail);
+    console.log('All Events:', events.map(e => ({ name: e.name, department: e.department })));
+
+    // Filter by department access first
     if (!canViewAllEvents && adminDepartment) {
+      // More flexible department matching - check if event department contains admin department or vice versa
       filtered = filtered.filter(event => {
         const eventDept = event.department?.toLowerCase().trim() || '';
         const adminDept = adminDepartment.toLowerCase().trim();
         
+        console.log(`Comparing event dept: "${eventDept}" with admin dept: "${adminDept}"`);
+        
+        // Exact match
         if (eventDept === adminDept) return true;
         
+        // Check if admin department contains key words from event department
         if (adminDept.includes('accounting') && eventDept.includes('accounting')) return true;
         if (adminDept.includes('finance') && eventDept.includes('finance')) return true;
         if (adminDept.includes('civil') && eventDept.includes('civil')) return true;
@@ -62,6 +74,8 @@ const AdminDashboard = () => {
         
         return false;
       });
+      
+      console.log('Filtered Events for Department:', filtered.map(e => ({ name: e.name, department: e.department })));
     }
 
     if (searchTerm) {
@@ -99,25 +113,18 @@ const AdminDashboard = () => {
 
   const updateEventStatus = async (eventId: number, newStatus: string) => {
     try {
-      console.log(`Updating event ${eventId} to status: ${newStatus}`);
-      
-      const updatedEvent = await apiService.updateEvent(eventId, { status: newStatus });
-      
-      setEvents(prevEvents => 
-        prevEvents.map(event =>
-          event.id === eventId ? { ...event, status: newStatus } : event
-        )
-      );
-      
+      await apiService.updateEvent(eventId, { status: newStatus });
+      setEvents(events.map(event =>
+        event.id === eventId ? { ...event, status: newStatus } : event
+      ));
       toast({
         title: "Success",
         description: `Event ${newStatus.toLowerCase()} successfully`,
       });
     } catch (error) {
-      console.error("Error updating event status:", error);
       toast({
         title: "Error",
-        description: `Failed to ${newStatus.toLowerCase()} event. Please try again.`,
+        description: "Failed to update event status",
         variant: "destructive",
       });
     }
@@ -219,6 +226,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <div className="container mx-auto py-8 px-4">
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
@@ -229,6 +237,9 @@ const AdminDashboard = () => {
               <div className="mt-2 space-y-1">
                 <p className="text-sm text-blue-600">
                   Viewing events for: {adminDepartment}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Debug: Found {filteredEvents.length} events for your department
                 </p>
               </div>
             )}
@@ -247,6 +258,24 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {/* Debug Information for Department Admins */}
+        {!canViewAllEvents && adminDepartment && (
+          <Card className="mb-6 bg-yellow-50 border-yellow-200">
+            <CardHeader>
+              <CardTitle className="text-yellow-800">Debug Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm space-y-2">
+                <p><strong>Your Department:</strong> {adminDepartment}</p>
+                <p><strong>Total Events in System:</strong> {events.length}</p>
+                <p><strong>Events for Your Department:</strong> {filteredEvents.length}</p>
+                <p><strong>All Event Departments:</strong> {Array.from(new Set(events.map(e => e.department))).join(', ')}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Filters */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Filters</CardTitle>
@@ -296,6 +325,7 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Events Table */}
         <Card>
           <CardHeader>
             <CardTitle>Events ({filteredEvents.length})</CardTitle>
@@ -348,9 +378,7 @@ const AdminDashboard = () => {
                           <Button
                             size="sm"
                             onClick={() => updateEventStatus(event.id, 'Approved')}
-                            className="bg-green-600 hover:bg-green-700 text-white"
                           >
-                            <CheckCircle className="w-4 h-4 mr-1" />
                             Approve
                           </Button>
                         )}
@@ -360,7 +388,6 @@ const AdminDashboard = () => {
                             variant="destructive"
                             onClick={() => updateEventStatus(event.id, 'Denied')}
                           >
-                            <XCircle className="w-4 h-4 mr-1" />
                             Deny
                           </Button>
                         )}
