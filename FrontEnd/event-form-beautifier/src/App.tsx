@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import HostDashboard from "./pages/HostDashboard";
 import EventDetails from "./pages/EventDetails";
 import NotFound from "./pages/NotFound";
+import GuestInvitationForm from "./pages/GuestInvitationForm";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={<UserDashboard />} />
       <Route path="/events" element={<Index />} />
       <Route path="/event-details/:id" element={<EventDetails />} />
+      <Route path="/event/:eventId/register" element={<GuestInvitationForm />} />
       <Route path="/admin-dashboard" element={
         <ProtectedRoute>
           <AdminDashboard />

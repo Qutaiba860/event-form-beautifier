@@ -35,5 +35,6 @@ urlpatterns = [  # Include the events app URLs
     # path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # path('api/auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/', include('authentication.urls')),
+    path('api/attendance/', include('attendance.urls')),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

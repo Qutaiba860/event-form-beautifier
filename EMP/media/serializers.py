@@ -26,6 +26,7 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         uploaded_file = self.context['request'].FILES.get('file')
+        validated_data['file'] = uploaded_file
         validated_data['name'] = uploaded_file.name
         validated_data['type'] = uploaded_file.content_type
         validated_data['size'] = uploaded_file.size

@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-t!w%c1@c4gg78sr9&rmpbe+*h@!-zcvpo%9f0156gpx-i=)&ul
 DEBUG = True
 
 ALLOWED_HOSTS = ['172.16.1.39', 'localhost', '192.168.72.1',
-                 '172.16.1.46']
+                 '192.168.0.155']
 
 
 # Application definition
@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     'core',
     'authentication',
     'corsheaders',
-    'rest_framework'
+    'rest_framework',
+    'attendance',
 ]
 
 MIDDLEWARE = [
@@ -89,7 +90,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'EMP',           # Replace with your DB name
         'USER': 'postgres',           # Replace with your DB user
-        'PASSWORD': 'real',   # Replace with your DB password
+        'PASSWORD': 'foxfox12',   # Replace with your DB password
         'HOST': 'localhost',              # or your DB host
         'PORT': '5432',                   # default PostgreSQL port
     }

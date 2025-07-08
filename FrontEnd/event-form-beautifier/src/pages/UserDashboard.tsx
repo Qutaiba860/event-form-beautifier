@@ -72,7 +72,24 @@ const UserDashboard = () => {
     }
   };
 
-  
+  const handleCopyLink = (eventId: number) => {
+  const url = `http://localhost:8080/event/${eventId}/register`; // or use your deployed domain
+  navigator.clipboard.writeText(url)
+    .then(() => {
+      toast({
+        title: "Link Copied",
+        description: "Registration link copied to clipboard.",
+      });
+    })
+    .catch(() => {
+      toast({
+        title: "Error",
+        description: "Failed to copy the link.",
+        variant: "destructive",
+      });
+    });
+};
+
   return (
   <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-100 py-8 px-4">
     <div className="max-w-6xl mx-auto">
@@ -128,7 +145,6 @@ const UserDashboard = () => {
                   <TableHead>Start</TableHead>
                   <TableHead>End</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Documents</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -144,7 +160,7 @@ const UserDashboard = () => {
                       <TableCell>{event.start_date} {event.start_time}</TableCell>
                       <TableCell>{event.end_date} {event.end_time}</TableCell>
                       <TableCell>{getStatusBadge(event.status)}</TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-2">
                         <Button
                           onClick={() => handleViewEvent(event.id)}
                           className="bg-red-600 text-white hover:bg-red-700"
@@ -152,6 +168,13 @@ const UserDashboard = () => {
                           <Eye className="w-4 h-4 mr-2" />
                           View
                         </Button>
+                         <Button
+                              variant="outline"
+                              onClick={() => handleCopyLink(event.id)}
+                              className="hover:bg-red-100"
+                            >
+                              Copy Link
+                            </Button>
                       </TableCell>
                     </TableRow>
                   ))}

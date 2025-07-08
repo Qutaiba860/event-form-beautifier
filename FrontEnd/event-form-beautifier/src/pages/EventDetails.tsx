@@ -11,6 +11,7 @@ import {
   Scan, ArrowLeft, Download, Eye, Plus, X, FileText,
   FileSpreadsheet, FilePlus, FileArchive, FileSignature, FileCheck2
 } from 'lucide-react';
+import { API_BASE_URL } from "@/config";
 
 
 type Media = {
@@ -58,21 +59,40 @@ const EventDetails = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const [uploadedMedia, setUploadedMedia] = useState<Media[]>([]);
   const [eventData, setEventData] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
-  const [attendanceList, setAttendanceList] = useState<Array<{ id: string, name: string, timestamp: string }>>([]);
+  const [attendanceList, setAttendanceList] = useState<Array<any>>([]);
   const [scannerValue, setScannerValue] = useState('');
   const [uploadedDocuments, setUploadedDocuments] = useState<Document[]>([]);
   const documentInputRef = useRef<HTMLInputElement>(null);
-
 useEffect(() => {
   const fetchEvent = async () => {
     try {
       const event = await apiService.getEventById(id!);
       setEventData(event);
+      const presentRes = await fetch(`${API_BASE_URL}/api/attendance/present/${event.id}/`);
+      const presentData = await presentRes.json();
 
+      const attendees = presentData.map((a: any) => ({
+        barcode: a.barcode,
+        aurak_id: a.aurak_id,
+        first_name: a.first_name,
+        last_name: a.last_name,
+        email: a.email,
+        phone_number: a.phone_number,
+        affiliation: a.affiliation,
+        department: a.department,
+        organization: a.organization,
+        position: a.position,
+        dietary_restrictions: a.dietary_restrictions,
+        special_requests: a.special_requests,
+        checkin_time: new Date(a.checkin_time).toLocaleString(),
+      }));
+      setAttendanceList(attendees);
+
+      setAttendanceList(attendees);
       // ✅ Fetch media
       const media = await apiService.getMedia(event.id);
       const parsedMedia = media.map((m: {
@@ -88,33 +108,32 @@ useEffect(() => {
       }));
       setUploadedMedia(parsedMedia);
 
-      // ✅ Fetch documents
-      const documents = await apiService.getDocuments(event.id);
-      const parsedDocs = documents.map((d: Document) => ({
-        id: d.id,
-        name: d.name,
-        type: d.type,
-        url: d.url,
-        size: d.size,
-      }));
-      setUploadedDocuments(parsedDocs);
+        // Fetch documents
+        const documents = await apiService.getDocuments(event.id);
+        const parsedDocs = documents.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          type: d.type,
+          url: d.url,
+          size: d.size,
+        }));
+        setUploadedDocuments(parsedDocs);
 
-    } catch (error) {
-      console.error("Error loading event, media, or documents:", error);
-      toast({
-        title: "Load Failed",
-        description: "Failed to load event, media, or documents.",
-        variant: "destructive",
-      });
-      setEventData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+      } catch (error) {
+        console.error("Error loading event data:", error);
+        toast({
+          title: "Load Failed",
+          description: "Failed to load event data.",
+          variant: "destructive",
+        });
+        setEventData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  fetchEvent();
-}, [id, toast]);
-
+    fetchEvent();
+  }, [id, toast]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -133,13 +152,11 @@ useEffect(() => {
           id: response.id,
           name: response.name,
           type: response.media_type.startsWith("image") ? "image" : "video",
-          url: response.file,  // Django returns full path to media file
+          url: response.file,
         });
       } catch (err: unknown) {
         let message = "An error occurred while uploading.";
-        if (err instanceof Error) {
-          message = err.message;
-        }
+        if (err instanceof Error) message = err.message;
         toast({
           title: "Upload failed",
           description: message,
@@ -149,34 +166,25 @@ useEffect(() => {
     }
 
     setUploadedMedia(prev => [...prev, ...uploadedItems]);
-
     toast({
       title: "Media Uploaded",
       description: `${uploadedItems.length} file(s) uploaded.`,
     });
   };
 
-const handleRemoveMedia = async (id: number) => {
-  try {
-    await apiService.deleteMedia(id); // <-- actually call the backend
-    setUploadedMedia(prev => prev.filter(media => media.id !== id));
-    toast({ title: "Media Removed", description: "File removed successfully." });
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to delete media.",
-      variant: "destructive",
-    });
-  }
-};
-
-const getDocumentIcon = (mimeType: string) => {
-  if (mimeType.includes("pdf")) return <FileText className="w-5 h-5 text-red-500" />;
-  if (mimeType.includes("word")) return <FileText className="w-5 h-5 text-blue-600" />; // fallback
-  if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return <FileText className="w-5 h-5 text-green-600" />;
-  if (mimeType.includes("powerpoint") || mimeType.includes("presentation")) return <FileText className="w-5 h-5 text-orange-500" />;
-  if (mimeType.includes("csv")) return <FileText className="w-5 h-5 text-teal-600" />;  return <FileCheck2 className="w-5 h-5 text-gray-500" />;
-};
+  const handleRemoveMedia = async (id: number) => {
+    try {
+      await apiService.deleteMedia(id);
+      setUploadedMedia(prev => prev.filter(media => media.id !== id));
+      toast({ title: "Media Removed", description: "File removed successfully." });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete media.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -191,18 +199,16 @@ const getDocumentIcon = (mimeType: string) => {
 
       try {
         const response = await apiService.uploadDocument(formData);
-          uploadedDocs.push({
-            id: response.id,
-            name: response.name,
-            type: response.type || file.type,     // ✅ Match your defined Document interface
-            url: response.url || '',              // ✅ Match your defined Document interface
-            size: response.size || file.size,
-          });
+        uploadedDocs.push({
+          id: response.id,
+          name: response.name,
+          type: response.type || file.type,
+          url: response.url || '',
+          size: response.size || file.size,
+        });
       } catch (err: unknown) {
         let message = "An error occurred while uploading.";
-        if (err instanceof Error) {
-          message = err.message;
-        }
+        if (err instanceof Error) message = err.message;
         toast({
           title: "Upload failed",
           description: message,
@@ -212,7 +218,6 @@ const getDocumentIcon = (mimeType: string) => {
     }
 
     setUploadedDocuments(prev => [...prev, ...uploadedDocs]);
-
     toast({
       title: "Documents Uploaded",
       description: `${uploadedDocs.length} file(s) uploaded.`,
@@ -220,116 +225,169 @@ const getDocumentIcon = (mimeType: string) => {
   };
 
   const handleRemoveDocument = async (id: number) => {
-  try {
-    await apiService.deleteDocument(id);
-    setUploadedDocuments(prev => prev.filter(doc => doc.id !== id));
-    toast({ title: "Document Removed", description: "File removed successfully." });
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to delete document.",
-      variant: "destructive",
-    });
-  }
-};
-
-  const handleDocumentDownload = async (document: Document) => {
     try {
-      console.log("Attempting to download document:", document);
-      
-      // Try using the API service first
-      let response;
-      try {
-        response = await apiService.downloadDocument(document.id);
-      } catch (apiError) {
-        console.log("API service failed, trying direct URL:", apiError);
-        
-        // Fallback: try direct URL access with authentication
-        const token = localStorage.getItem('access_token');
-        const directUrl = document.url.startsWith('http') ? document.url : `${API_BASE_URL}${document.url}`;
-        
-        response = await fetch(directUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Direct download failed: ${response.status}`);
-        }
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = document.name;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
-
-      toast({
-        title: "Download Started",
-        description: `${document.name} is being downloaded.`,
-      });
+      await apiService.deleteDocument(id);
+      setUploadedDocuments(prev => prev.filter(doc => doc.id !== id));
+      toast({ title: "Document Removed", description: "File removed successfully." });
     } catch (error) {
-      console.error('Download error:', error);
       toast({
-        title: "Download Failed",
-        description: `Could not download ${document.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        title: "Error",
+        description: "Failed to delete document.",
         variant: "destructive",
       });
     }
   };
 
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  const handleDocumentDownload = async (doc: Document) => {
+  try {
+    const response = await fetch(doc.url, {
+      credentials: 'include' // Remove if you don't need cookies
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to download document.');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = window.document.createElement('a');
+    a.href = url;
+    a.download = doc.name || `document_${doc.id}`;
+    window.document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    window.document.body.removeChild(a);
+
+    toast({
+      title: "Download Started",
+      description: `${doc.name || 'Document'} is downloading.`,
+    });
+  } catch (error) {
+    console.error('Download error:', error);
+    toast({
+      title: "Download Failed",
+      description: `Could not download ${doc.name || 'the document'}. ${error instanceof Error ? error.message : 'Please try again'}`,
+      variant: "destructive",
+    });
+  }
 };
 
-  const handleScanAttendance = () => {
-    if (scannerValue.trim()) {
-      const id = scannerValue.trim();
-      if (attendanceList.find(a => a.id === id)) {
-        toast({ title: "Duplicate", description: "ID already scanned.", variant: "destructive" });
-        return;
-      }
-      const newAttendee = {
-        id,
-        name: `Student ${id}`,
-        timestamp: new Date().toLocaleString()
-      };
-      setAttendanceList(prev => [...prev, newAttendee]);
-      setScannerValue('');
-      toast({ title: "Recorded", description: `${newAttendee.name} marked present.` });
-    }
+
+  const getDocumentIcon = (mimeType: string) => {
+    if (mimeType.includes("pdf")) return <FileText className="w-5 h-5 text-red-500" />;
+    if (mimeType.includes("word")) return <FileText className="w-5 h-5 text-blue-600" />;
+    if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return <FileText className="w-5 h-5 text-green-600" />;
+    if (mimeType.includes("powerpoint") || mimeType.includes("presentation")) return <FileText className="w-5 h-5 text-orange-500" />;
+    if (mimeType.includes("csv")) return <FileText className="w-5 h-5 text-teal-600" />;
+    return <FileCheck2 className="w-5 h-5 text-gray-500" />;
   };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+const handleScanAttendance = async () => {
+  const barcode = scannerValue.trim();
+  if (!barcode) return;
+
+  if (attendanceList.find(a => a.id === barcode)) {
+    toast({ title: "Duplicate", description: "This attendee was already marked present.", variant: "destructive" });
+    setScannerValue('');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/attendance/scan/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ barcode })
+    });
+
+    let data;
+    try {
+      data = await response.json();  // this can fail
+    } catch (jsonErr) {
+      const fallbackText = await response.text();
+      throw new Error(fallbackText || 'Invalid JSON response');
+    }
+
+    if (!response.ok || data.status !== "success") {
+      throw new Error(data.message || 'Scan failed');
+    }
+
+    const attendee = data.attendee;
+    if (!attendee || !attendee.role || !attendee.name) {
+      throw new Error("Incomplete attendee data returned.");
+    }
+
+    const name = `${attendee.role.charAt(0).toUpperCase() + attendee.role.slice(1)} ${attendee.name}`;
+    const timestamp = new Date(attendee.checkin_time).toLocaleString();
+
+    setAttendanceList(prev => [...prev, { id: barcode, name, timestamp }]);
+    toast({ title: "Check-In Successful", description: `${name} marked present.` });
+  } catch (err: unknown) {
+    let message = "Unexpected error occurred";
+    if (err instanceof Error) {
+      message = err.message;
+    }
+    toast({
+      title: "Scan failed",
+      description: message,
+      variant: "destructive"
+    });
+  }
+
+  setScannerValue('');
+};
+
 
   const handleExportAttendance = () => {
-    const csvContent = [
-      ['ID', 'Name', 'Timestamp'],
-      ...attendanceList.map(attendee => [attendee.id, attendee.name, attendee.timestamp])
-    ].map(row => row.join(',')).join('\n');
+  const headers = [
+    'Barcode',
+    'ID',
+    'First Name',
+    'Last Name',
+    'Email',
+    'Phone Number',
+    'Affiliation',
+    'Department/School',
+    'Position/Title',
+    'Dietary Restrictions',
+    'Special Requests',
+    'Check-In Time'
+  ];
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${eventData?.name}_attendance.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+const rows = attendanceList.map(a => [
+    a.barcode || '',
+    a.aurak_id || '',
+    a.first_name || '',
+    a.last_name || '',
+    a.email || '',
+    a.phone_number || '',
+    capitalize(a.affiliation || ''),
+    a.department || a.organization || '',
+    a.position || '',
+    a.dietary_restrictions || '',
+    a.special_requests || '',
+    a.checkin_time || ''
+  ]);
 
+  const csvContent = [headers, ...rows].map(row => row.map(cell =>
+    `"${String(cell).replace(/"/g, '""')}"`  // Escape quotes
+  ).join(',')).join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${eventData?.name}_attendance.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved': return <Badge className="bg-green-100 text-green-800">Approved</Badge>;
@@ -342,7 +400,10 @@ const formatFileSize = (bytes: number) => {
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (!eventData) return <div className="p-8 text-center text-red-500">Event not found.</div>;
 
-  const totalAttendees = eventData.expected_students + eventData.expected_faculty + eventData.expected_community + eventData.expected_others;
+  const totalAttendees = (eventData.expected_students || 0) + 
+                       (eventData.expected_faculty || 0) + 
+                       (eventData.expected_community || 0) + 
+                       (eventData.expected_others || 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-100 py-8 px-4">
@@ -351,6 +412,7 @@ const formatFileSize = (bytes: number) => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
         </Button>
 
+        {/* Event Overview Card */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <div className="flex items-center justify-between">
@@ -377,6 +439,7 @@ const formatFileSize = (bytes: number) => {
           </CardContent>
         </Card>
 
+        {/* Event Media Card */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <CardTitle className="text-xl font-bold flex items-center">
@@ -391,7 +454,14 @@ const formatFileSize = (bytes: number) => {
               <Button onClick={() => fileInputRef.current?.click()} className="bg-red-600 hover:bg-red-700">
                 <Plus className="w-4 h-4 mr-2" /> Add Media
               </Button>
-              <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" onChange={handleFileUpload} className="hidden" />
+              <input 
+                ref={fileInputRef} 
+                type="file" 
+                multiple 
+                accept="image/*,video/*" 
+                onChange={handleFileUpload} 
+                className="hidden" 
+              />
             </div>
 
             {uploadedMedia.length > 0 && (
@@ -418,13 +488,13 @@ const formatFileSize = (bytes: number) => {
           </CardContent>
         </Card>
 
-        {/* Event Documents Card - Updated with proper download functionality */}
+        {/* Event Documents Card */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <CardTitle className="text-xl font-bold flex items-center">
               <FileText className="w-6 h-6 mr-2" /> Event Documents
             </CardTitle>
-            <CardDescription className="text-red-100">Upload PDF, Excel, Word, PowerPoint and other documents</CardDescription>
+            <CardDescription className="text-red-100">Upload and download documents</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
             <div className="border-2 border-dashed border-red-200 rounded-lg p-6 text-center">
@@ -443,7 +513,7 @@ const formatFileSize = (bytes: number) => {
                 className="hidden"
               />
             </div>
- 
+
             {uploadedDocuments.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-medium">Uploaded Documents ({uploadedDocuments.length}):</h4>
@@ -458,10 +528,20 @@ const formatFileSize = (bytes: number) => {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <Button size="sm" variant="outline" onClick={() => handleDocumentDownload(document)}>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleDocumentDownload(document)}
+                          title="Download document"
+                        >
                           <Download className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleRemoveDocument(document.id)}>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleRemoveDocument(document.id)}
+                          title="Delete document"
+                        >
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
@@ -473,6 +553,7 @@ const formatFileSize = (bytes: number) => {
           </CardContent>
         </Card>
 
+        {/* Attendance Tracking Card */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <div className="flex items-center justify-between">
