@@ -169,6 +169,7 @@ const handleRemoveMedia = async (id: number) => {
     });
   }
 };
+
 const getDocumentIcon = (mimeType: string) => {
   if (mimeType.includes("pdf")) return <FileText className="w-5 h-5 text-red-500" />;
   if (mimeType.includes("word")) return <FileText className="w-5 h-5 text-blue-600" />; // fallback
@@ -176,6 +177,7 @@ const getDocumentIcon = (mimeType: string) => {
   if (mimeType.includes("powerpoint") || mimeType.includes("presentation")) return <FileText className="w-5 h-5 text-orange-500" />;
   if (mimeType.includes("csv")) return <FileText className="w-5 h-5 text-teal-600" />;  return <FileCheck2 className="w-5 h-5 text-gray-500" />;
 };
+
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || !eventData) return;
@@ -231,7 +233,42 @@ const getDocumentIcon = (mimeType: string) => {
   }
 };
 
+  const handleDocumentDownload = async (document: Document) => {
+    try {
+      const response = await fetch(document.url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
 
+      if (!response.ok) {
+        throw new Error('Failed to download document');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = document.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Download Started",
+        description: `${document.name} is being downloaded.`,
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "Could not download the document. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
 const formatFileSize = (bytes: number) => {
   if (bytes === 0) return "0 Bytes";
@@ -362,7 +399,7 @@ const formatFileSize = (bytes: number) => {
           </CardContent>
         </Card>
 
-        {/* Event Documents Card - NEW */}
+        {/* Event Documents Card - Updated with proper download functionality */}
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <CardTitle className="text-xl font-bold flex items-center">
@@ -402,15 +439,9 @@ const formatFileSize = (bytes: number) => {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <a
-                          href={document.url}
-                          download={document.name}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium border rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                        >
+                        <Button size="sm" variant="outline" onClick={() => handleDocumentDownload(document)}>
                           <Download className="w-4 h-4" />
-                        </a>
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => handleRemoveDocument(document.id)}>
                           <X className="w-4 h-4" />
                         </Button>
@@ -422,6 +453,7 @@ const formatFileSize = (bytes: number) => {
             )}
           </CardContent>
         </Card>
+
         <Card className="shadow-xl border-red-200">
           <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
             <div className="flex items-center justify-between">
