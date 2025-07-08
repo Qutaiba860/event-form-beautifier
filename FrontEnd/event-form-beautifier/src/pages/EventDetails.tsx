@@ -235,7 +235,12 @@ const getDocumentIcon = (mimeType: string) => {
 
   const handleDocumentDownload = async (document: Document) => {
     try {
-      const response = await fetch(document.url, {
+      // Use the API base URL to construct the full download URL
+      const downloadUrl = document.url.startsWith('http') 
+        ? document.url 
+        : `${document.url}`;
+
+      const response = await fetch(downloadUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -243,18 +248,23 @@ const getDocumentIcon = (mimeType: string) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to download document');
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = document.name;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      
+      // Clean up
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
 
       toast({
         title: "Download Started",
@@ -264,7 +274,7 @@ const getDocumentIcon = (mimeType: string) => {
       console.error('Download error:', error);
       toast({
         title: "Download Failed",
-        description: "Could not download the document. Please try again.",
+        description: `Could not download ${document.name}. Please try again.`,
         variant: "destructive",
       });
     }
